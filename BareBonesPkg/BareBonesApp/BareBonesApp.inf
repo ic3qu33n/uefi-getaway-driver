@@ -1,0 +1,17 @@
+[Defines]
+	INF_VERSION						= 1.25
+	BASE_NAME						= BareBonesApp
+	FILE_GUID						= E5CED468-CA90-4E36-8524-AC44D9A58033
+	MODULE_TYPE						= UEFI_APPLICATION
+	VERSION_STRING					= 1.0
+	ENTRY_POINT						= UefiMain
+
+[Sources]
+	BareBonesApp.c
+
+[Packages]
+	MdePkg/MdePkg.dec
+
+[LibraryClasses]
+	UefiApplicationEntryPoint
+	UefiLib

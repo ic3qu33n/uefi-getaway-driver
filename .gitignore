@@ -1,6 +1,7 @@
 
 ## edk2 files cloned from https://github.com/tianocore/edk2
 ## need edk2 repo for building OVMF image
+edk2/
 edk2/ArmPkg 
 edk2/ArmPlatformPkg 
 edk2/ArmVirtPkg 
