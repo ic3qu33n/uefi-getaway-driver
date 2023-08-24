@@ -10,6 +10,7 @@
 
 [Components]
 	BareBonesPkg/BareBonesApp/BareBonesApp.inf
+	BareBonesPkg/ImageOffTheHandle/ImageOffTheHandle.inf
 
 
 [LibraryClasses]
