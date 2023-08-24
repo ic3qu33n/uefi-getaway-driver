@@ -24,5 +24,6 @@ echo "export WORKSPACE=$(pwd)" >> ~/.zshrc
 cd edk2
 echo "export CONF_PATH=$(pwd)/Conf" >> ~/.zshrc
 echo "export EDK2_TOOLS_PATH=$(pwd)/Conf" >> ~/.zshrc
-export UNIXGCC_X64_PETOOLS_PREFIX=/opt/homebrew/bin/x86_64-elf- 
-export GCC_X64_PREFIX=/opt/homebrew/bin/x86_64-elf-
+echo "export UNIXGCC_X64_PETOOLS_PREFIX=/opt/homebrew/bin/x86_64-elf-" >> ~/.zshrc
+echo "export GCC_X64_PREFIX=/opt/homebrew/bin/x86_64-elf-" >> ~/.zshrc
+echo "export GCC_HOST_BIN=gcc" >> ~/.zshrc 
