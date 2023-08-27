@@ -87,42 +87,54 @@ bits 64
 
 mzheader:
 	dw "MZ"
-	dw 0x100
+	times 60-($-$$) db 0
+	dd 0x40
 pe_header:
 	dd "PE"			;	uint32_t mMagic; // PE\0\0 or 0x00004550
 	dw 0x14C		;	uint16_t mMachine;
 	times 14 db 0
 	db 0			;	uint16_t mNumberOfSections;
-	db 0 			;	uint16_t mSizeOfOptionalHeader;
-	dw 0x103 			;	uint16_t mCharacteristics;
+	db 60 			;	uint16_t mSizeOfOptionalHeader;
+	dw 0x202e 			;	uint16_t mCharacteristics;
 opt_header:
 	dw 0x20B		;	uint16_t mMagic; // 0x010b - PE32, 0x020b - PE32+ (64 bit)
 	times 12 db 0
-	dd start - $$		;	uint32_t mAddressOfEntryPoint;
+	dd $_start		;	uint32_t mAddressOfEntryPoint;
 	times 10 db 0
 	dd 0x400000		;	uint32_t mImageBase;
 	dd 4			;	uint32_t mSectionAlignment;
 	dd 4			;	uint32_t mFileAlignment;
 	times 8 db 0
-	dw 5			;	uint16_t mMajorSubsystemVersion;
-	times 7 db 0
-	dd 0x2000  		;	uint32_t mSizeOfImage;
-	dd  0			;	uint32_t mSizeOfHeaders;
-	times 3 db 0
+	dd 5			;	uint16_t mMajorSubsystemVersion;
+	dd 0xFFFFFF		;	uint16_t mMinorSubsystemVersion;  can be blank, still times 4 db 0
+	dd 0x8000  		;	uint32_t mSizeOfImage;
+	dd 0x7C			;	uint32_t mSizeOfHeaders;
+	times 4 db 0
 	dw 3			;	uint16_t mSubsystem;
+	dw 0x400		;	uint16_t mDllCharacteristics;
+	dd 0x100000		;	uint32_t mSizeOfStackReserve;
+	dd 0x1000		;	uint32_t mSizeOfStackCommit;
+	dd 0x100000		;	uint32_t mSizeOfHeapReserve;
 	times 22 db 0
 	dd 14			;	uint32_t mNumberOfRvaAndSizes;
-datadirs:
-	times 56 db 0
+;datadirs:
+	;times 32 db 0
+	;times 112 db 0
 
 _ohhello:	db __utf16__ 'oh hello there', 13, 10, 0	
 		
-start:
+_start:
 	mov rcx, [rdx + 0x40] 	;SystemTable in rdx upon efi program invovation
 	mov rax, [rcx + 0x8]				;
-	mov rdx, _ohhello
+	mov rdx, $_ohhello
 	sub rsp, 32
 	call rax
 	add rsp, 32
-	ret
+	retn
 
+;; required 28 bytes of paddiing to conform to the f*d spec 
+;; 28 bytes isn't even nicely aligned along a 16byte boundary so idfk
+;;  
+
+padding:
+	times 268-($-$$) db 0

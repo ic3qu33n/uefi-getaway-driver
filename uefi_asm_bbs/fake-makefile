@@ -1,0 +1,24 @@
+what?
+
+Aight, we both know that this isn't a "real" Makefile so I will acquiesce on the naming convention since I have no time to argue over semantics  
+
+but honestly, if we're getting into a debate in the realm of semiotics, don't even try me unless you've read Saussure.
+
+anyway, if you want to turn these lil asm bbs into real EFI binaries just use a variation of the command below:
+
+```
+nasm -f bin dr_note_pe_class.asm -o dr-note-pe-class.efi
+```
+and then don't forget to copy your resultant EFI binary to your target disk:
+
+```
+cp dr-note-pe-class.efi /Users/nika/uefi_testing/edk2/UEFI_bb_disk/
+```
+
+finally run qemu, passing in your target disk (w your new lil EFI bin already waiting 4 u)
+
+
+```
+qemu-system-x86_64 -drive if=pflash,format=raw,file=edk2/Build/OvmfX64/RELEASE_GCC/FV/OVMF.fd                      -drive format=raw,file=fat:rw:UEFI_bb_disk                      -nographic                      -net none
+```
+xoxo
