@@ -91,28 +91,48 @@ mzheader:
 	dd 0x40
 pe_header:
 	dd "PE"			;	uint32_t mMagic; // PE\0\0 or 0x00004550
-	dw 0x14C		;	uint16_t mMachine;
-	times 14 db 0
+	dw 0x8664		;	uint16_t mMachine;
+	;times 14 db 0
+;	uint16_t mNumberOfSections;
 	db 0			;	uint16_t mNumberOfSections;
-	db 60 			;	uint16_t mSizeOfOptionalHeader;
-	dw 0x202e 			;	uint16_t mCharacteristics;
+	dd 0x0 			;	uint32_t mTimeDateStamp;
+	dd 0x0			;	uint32_t mPointerToSymbolTable;
+	dd 0x0			;	uint32_t mNumberOfSymbols;
+
+	db 0xf0 		;	uint16_t mSizeOfOptionalHeader;
+	dw 0x2f 		;	uint16_t mCharacteristics;
 opt_header:
 	dw 0x20B		;	uint16_t mMagic; // 0x010b - PE32, 0x020b - PE32+ (64 bit)
-	times 12 db 0
+;
+;	times 12 db 0
+
+	db 1				;	uint8_t  mMajorLinkerVersion;
+	db 73				;	uint8_t  mMinorLinkerVersion;
+	dd 0				;	uint32_t mSizeOfCode;
+	dd 0				;	uint32_t mSizeOfInitializedData;
+	dd 0				;	uint32_t mSizeOfUninitializedData;
+
+					
 	dd $_start		;	uint32_t mAddressOfEntryPoint;
-	times 10 db 0
+
+;	times 10 db 0
+;
+
 	dd 0x400000		;	uint32_t mImageBase;
-	dd 4			;	uint32_t mSectionAlignment;
-	dd 4			;	uint32_t mFileAlignment;
-	times 8 db 0
+	dd 0x1000		;	uint32_t mSectionAlignment;
+	dd 0x200		;	uint32_t mFileAlignment;
+
+;	times 8 db 0
+;	[this might be an incorrect placement of 8 null bytes so tbd on deleting this one]
+
 	dd 5			;	uint16_t mMajorSubsystemVersion;
 	dd 0xFFFFFF		;	uint16_t mMinorSubsystemVersion;  can be blank, still times 4 db 0
-	dd 0x8000  		;	uint32_t mSizeOfImage;
-	dd 0x7C			;	uint32_t mSizeOfHeaders;
+	dd 0x3000  		;	uint32_t mSizeOfImage;
+	dd 0x200			;	uint32_t mSizeOfHeaders;
 	times 4 db 0
-	dw 3			;	uint16_t mSubsystem;
+	dw 0xa			;	uint16_t mSubsystem;
 	dw 0x400		;	uint16_t mDllCharacteristics;
-	dd 0x100000		;	uint32_t mSizeOfStackReserve;
+	dd 0x1000		;	uint32_t mSizeOfStackReserve;
 	dd 0x1000		;	uint32_t mSizeOfStackCommit;
 	dd 0x100000		;	uint32_t mSizeOfHeapReserve;
 	times 22 db 0

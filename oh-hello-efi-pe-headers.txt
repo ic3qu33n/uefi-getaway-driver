@@ -1,0 +1,79 @@
+dos.e_magic: 0x5a4d
+dos.e_cp: 0x1
+dos.e_crlc: 0x0
+dos.e_cparhdr: 0x4
+dos.e_minalloc: 0x10
+dos.e_maxalloc: 0xffff
+dos.e_ss: 0x0
+dos.e_sp: 0x140
+dos.e_csum: 0x0
+dos.e_ip: 0x0
+dos.e_cs: 0x0
+dos.e_lfarlc: 0x40
+dos.e_ovno: 0x0
+dos.e_res[0]: 0x0
+dos.e_res[1]: 0x0
+dos.e_res[2]: 0x0
+dos.e_res[3]: 0x0
+dos.e_oemid: 0x0
+dos.e_oeminfo: 0x0
+dos.e_res2[0]: 0x0
+dos.e_res2[1]: 0x0
+dos.e_res2[2]: 0x0
+dos.e_res2[3]: 0x0
+dos.e_res2[4]: 0x0
+dos.e_res2[5]: 0x0
+dos.e_res2[6]: 0x0
+dos.e_res2[7]: 0x0
+dos.e_res2[8]: 0x0
+dos.e_res2[9]: 0x0
+dos.e_lfanew: 0x80
+rich.isPresent: false
+nt.Signature: 0x4550
+nt.FileHeader.Machine: 0x8664
+nt.FileHeader.NumberOfSections: 0x2
+nt.FileHeader.TimeDateStamp: 1692929002
+nt.FileHeader.PointerToSymbolTable: 0x0
+nt.FileHeader.NumberOfSymbols: 0
+nt.FileHeader.SizeOfOptionalHeader: 0xf0
+nt.FileHeader.Characteristics: 0x2f
+nt.OptionalHeader64.Magic: 0x20b
+nt.OptionalHeader64.MajorLinkerVersion: 1
+nt.OptionalHeader64.MinorLinkerVersion: 73
+nt.OptionalHeader64.SizeOfCode: 0x0
+nt.OptionalHeader64.SizeOfInitializedData: 0x0
+nt.OptionalHeader64.SizeOfUninitializedData: 0x0
+nt.OptionalHeader64.AddressOfEntryPoint: 0x1000
+nt.OptionalHeader64.BaseOfCode: 0x0
+nt.OptionalHeader64.ImageBase: 0x400000
+nt.OptionalHeader64.SectionAlignment: 0x1000
+nt.OptionalHeader64.FileAlignment: 0x200
+nt.OptionalHeader64.MajorOperatingSystemVersion: 1
+nt.OptionalHeader64.MinorOperatingSystemVersion: 0
+nt.OptionalHeader64.Win32VersionValue: 0
+nt.OptionalHeader64.SizeOfImage: 0x3000
+nt.OptionalHeader64.SizeOfHeaders: 0x200
+nt.OptionalHeader64.CheckSum: 0x73b
+nt.OptionalHeader64.Subsystem: 0xa
+nt.OptionalHeader64.DllCharacteristics: 0x0
+nt.OptionalHeader64.SizeOfStackReserve: 0x1000
+nt.OptionalHeader64.SizeOfStackCommit: 0x1000
+nt.OptionalHeader64.SizeOfHeapReserve: 0x10000
+nt.OptionalHeader64.SizeOfHeapCommit: 0x0
+nt.OptionalHeader64.LoaderFlags: 0x0
+nt.OptionalHeader64.NumberOfRvaAndSizes: 16
+Imports: 
+Relocations: 
+Debug Directories: 
+Symbols (symbol table): 
+Sections: 
+Sec Name: .text
+Sec Base: 0x401000
+Sec Size: 512
+Sec Name: .data
+Sec Base: 0x402000
+Sec Size: 512
+Exports: 
+First 8 bytes from entry point (0x401000):
+ 0x48 0x8b 0x4a 0x40 0x48 0x8b 0x41 0x8
+Resources: 
