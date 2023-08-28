@@ -195,10 +195,21 @@ UefiMain (
 	);
 	if (status == EFI_SUCCESS) {
 		EFI_HANDLE devicehandle = loadedimageprotocol->DeviceHandle;
-		EFI_DEVICE_PATH_PROTOCOL *devicepath = (loadedimageprotocol->FilePath);
+		EFI_DEVICE_PATH_PROTOCOL *devicefilepath = (loadedimageprotocol->FilePath);
+		UINT64 img_size=loadedimageprotocol->ImageSize;
+		EFI_DEVICE_PATH_PROTOCOL *devicepath;
 		EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *sfsp;
 		EFI_GUID sfsp_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
+		
+		//EFI_DEVICE_PATH_PROTOCOL *devicepath = (loadedimageprotocol->FilePath);
+		EFI_GUID e_lidpp_guid= EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL_GUID;
+		//sfsp_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
 
+		status = gBS->HandleProtocol(
+			ImageHandle,
+			&e_lidpp_guid,
+			(void **) &devicepath
+		);
 
 		status = gBS->HandleProtocol(
 			devicehandle,
@@ -212,7 +223,9 @@ UefiMain (
 //		EFI_DEVICE_PATH_TO_TEXT_PROTOCOL *dpttp;
 //		EFI_GUID dpttp_guid = EFI_DEVICE_PATH_TO_TEXT_PROTOCOL_GUID;
 //		Print(L"Device path of current UEFI app executable image: %s\n", ConvertDevicePathToText(loadedimage
-		Print(L"Device path of current UEFI app executable image: %s\n", ConvertDevicePathToText(devicepath ,FALSE,TRUE));
+		Print(L"Filename current UEFI app executable image: %s\n", ConvertDevicePathToText(devicefilepath ,FALSE,TRUE));
+		Print(L"Device path of current UEFI app executable image: %s\n", ConvertDevicePathToText(devicepath, FALSE,TRUE));
+		Print(L"Image size of current UEFI app executable image: %X\n", img_size);
 			
 	}
 	return status;		
