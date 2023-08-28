@@ -86,20 +86,53 @@ bits 64
 
 
 mzheader:
-	dw "MZ"
-	times 60-($-$$) db 0
-	dd 0x40
+	dd "MZ" 		;  DOS e_magic
+	dw 0x1		 	;  DOS e_cp
+	dw 0x0			;  DOS e_crlc
+	dw 0x4			;  DOS e_cparhdr
+	dw 0x10			;  DOS e_minalloc
+	dd 0xffff 		;  DOS e_maxalloc
+
+	dw 0 			;  DOS e_ss
+	dw 0x140		;  DOS e_sp
+	dw 0			;  DOS e_csum
+	dw 0			;  DOS e_ip
+	dw 0			;  DOS e_cs
+	dw 0x40			;  DOS e_lfarlc
+	times 62-($-$$) db 0
+	dw 0x40
+;
+; MZ header re
+; using the output vals from pe-parse to reconstruct  valid header for an efi bin
+;
+;  DOS e_magic
+;  DOS e_cp
+;  DOS e_crlc
+;  DOS e_cparhdr
+;  DOS e_minalloc
+;  DOS e_maxalloc
+;  DOS e_ss
+;  DOS e_sp
+;  DOS e_csum
+;  DOS e_ip
+;  DOS e_cs
+;  DOS e_lfarlc
+;
+;
+
+
 pe_header:
 	dd "PE"			;	uint32_t mMagic; // PE\0\0 or 0x00004550
 	dw 0x8664		;	uint16_t mMachine;
-	;times 14 db 0
-;	uint16_t mNumberOfSections;
-	db 0			;	uint16_t mNumberOfSections;
+;
+;	;times 14 db 0
+;
+	dw 1			;	uint16_t mNumberOfSections;
 	dd 0x0 			;	uint32_t mTimeDateStamp;
 	dd 0x0			;	uint32_t mPointerToSymbolTable;
 	dd 0x0			;	uint32_t mNumberOfSymbols;
 
-	db 0xf0 		;	uint16_t mSizeOfOptionalHeader;
+	dw 0xf0 		;	uint16_t mSizeOfOptionalHeader;
 	dw 0x2f 		;	uint16_t mCharacteristics;
 opt_header:
 	dw 0x20B		;	uint16_t mMagic; // 0x010b - PE32, 0x020b - PE32+ (64 bit)
@@ -117,6 +150,7 @@ opt_header:
 
 ;	times 10 db 0
 ;
+	dd 0			;	uint32_t mBaseOfCode;
 
 	dd 0x400000		;	uint32_t mImageBase;
 	dd 0x1000		;	uint32_t mSectionAlignment;
@@ -125,18 +159,23 @@ opt_header:
 ;	times 8 db 0
 ;	[this might be an incorrect placement of 8 null bytes so tbd on deleting this one]
 
-	dd 5			;	uint16_t mMajorSubsystemVersion;
-	dd 0xFFFFFF		;	uint16_t mMinorSubsystemVersion;  can be blank, still times 4 db 0
+	dw 1			;	uint16_t mMajorSubsystemVersion;
+	dw 0			;	uint16_t mMinorSubsystemVersion;  can be blank, still times 4 db 0
+	dd 0			;	uint32_t mWin32VersionValue;
+
 	dd 0x3000  		;	uint32_t mSizeOfImage;
 	dd 0x200			;	uint32_t mSizeOfHeaders;
 	times 4 db 0
 	dw 0xa			;	uint16_t mSubsystem;
-	dw 0x400		;	uint16_t mDllCharacteristics;
+	dw 0x0			;	uint16_t mDllCharacteristics;
 	dd 0x1000		;	uint32_t mSizeOfStackReserve;
 	dd 0x1000		;	uint32_t mSizeOfStackCommit;
 	dd 0x100000		;	uint32_t mSizeOfHeapReserve;
-	times 22 db 0
-	dd 14			;	uint32_t mNumberOfRvaAndSizes;
+;	times 22 db 0
+;	[this might be an incorrect placement of 8 null bytes so tbd on deleting this one]
+	dd 0			;	uint32_t mSizeOfHeapCommit;
+	dd 0			;	uint32_t mLoaderFlags;
+	dd 16			;	uint32_t mNumberOfRvaAndSizes;
 ;datadirs:
 	;times 32 db 0
 	;times 112 db 0
