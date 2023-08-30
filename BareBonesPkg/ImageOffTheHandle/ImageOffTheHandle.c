@@ -3,6 +3,8 @@
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/DevicePathLib.h>
 #include <Protocol/LoadedImage.h>
+#include <Guid/FileInfo.h>
+
 
 EFI_STATUS
 EFIAPI
@@ -17,7 +19,10 @@ UefiMain (
 // This stackoverflow answer to the question "Can I write on my local filesystem using efi":
 // https://stackoverflow.com/questions/32324109/can-i-write-on-my-local-filesystem-using-efi
 //
-//
+// This repo of example UEFI apps by PF-Maillard:
+// https://github.com/PF-Maillard/UEFI_BMP_Application/tree/master
+//	Specifically this file:
+// https://github.com/PF-Maillard/UEFI_BMP_Application/blob/master/MyBmpApplication.c
 //
 //
 // ****************************************************************************************
@@ -268,6 +273,13 @@ UefiMain (
 			//EFI_FILE_PROTOCOL *targetfile;
 			//UINT64 host_attribs = 0x0000000000000001 || 0x0000000000000002 || 0x0000000000000004;
 			UINT64 host_attribs = 0x0000000000000000;
+			//EFI_FILE_INFO *fileinfo;
+			//EFI_GUID fileinfo_guid = EFI_FILE_INFO_ID;
+			//VOID *fileinfo_buffer = NULL;
+			//UINTN fileinfo_buffersize = 0;
+			
+			UINTN newfile_buffersize = 0x4000;
+			VOID *temp_buf;
 			//UINT64 target_attribs = 0x0000000000000002 || 0x0000000000000004;
 			status = rootvolume->Open(rootvolume, &hostfile, L"\\ImageOffTheHandle.efi",0x0000000000000001, host_attribs);
 			if (status == EFI_SUCCESS){
@@ -275,14 +287,15 @@ UefiMain (
 				//open() -> read() -> close() host
 				//EFI_FILE_INFO *hostfileinfo;
 				
-				status = gBS->AllocatePool(
+				/*status = gBS->AllocatePool(
 					AllocateAnyPages,
 					img_size,
 					(void**)&hostfile); 
-				EFI_FILE_HANDLE *temp_buf;
+				*/
+				//EFI_FILE_HANDLE *temp_buf;
 				//EFI_FILE_PROTOCOL *temp_buf;
 				
-				if (status == EFI_BUFFER_TOO_SMALL){
+				/*if (status == EFI_BUFFER_TOO_SMALL){
 					status = gBS->AllocatePool(
 						AllocateAnyPages,
 						img_size,
@@ -294,25 +307,49 @@ UefiMain (
 				} else {
 
 						Print(L"initial allocate pool for file read successful!\n\n");
-				}	
+				}*/
+					
+				/*status=hostfile->GetInfo(hostfile, &fileinfo_guid, &fileinfo_buffersize, NULL);
+				if (EFI_ERROR(status)){
+					Print(L" hmm something got effed.");
+				} else if (status == EFI_BUFFER_TOO_SMALL){
+					status = gBS->AllocatePool(
+						AllocateAnyPages,
+						fileinfo_buffersize,
+						(void**)&fileinfo); 
 				
+					status=hostfile->GetInfo(hostfile, &fileinfo_guid, &fileinfo_buffersize, fileinfo);
+					if (status == EFI_SUCCESS){
+						Print(L"2nd get info call successful!");
+					}
+				}
+				if (status == EFI_SUCCESS){
+					Print(L"get info call successful!");
+				}*/
+				//newfile_buffersize=(fileinfo->FileSize);	
+				//Print(L"newfile buffer size is: %u", newfile_buffersize);
+				status = gBS->AllocatePool(
+					AllocateAnyPages,
+					newfile_buffersize,
+					(void**)&temp_buf); 
 				//EFI_FILE_HANDLE is a void* so this takes care of param requirements for this function
-				
 	//			UINTN target_filesz=img_size;
 				//status=rootvolume->Read(hostfile, &img_size, &temp_buf);
-				status=hostfile->Read(hostfile, &img_size, temp_buf);
+				if (status==EFI_SUCCESS){
+					Print(L"allocate pool for file read successful!\n\n");
+				}
+				
+				//status=hostfile->Read(hostfile, &img_size, temp_buf);
+				status=hostfile->Read(hostfile, &newfile_buffersize, temp_buf);
 				if (status == EFI_SUCCESS){
 					Print(L"file read with ImageOffTheHandle.efi successful! \n\n");
-				};
+				}
 				status=hostfile->Close(hostfile);
 
 				// open -> write -> close target		
-				//status = rootvolume->Open(rootvolume, &targetfile, L"\\4.efi", 0x8000000000000000, target_attribs);
+				//status=rootvolume->Open(rootvolume, &targetfile, L"\\4.efi", 0x8000000000000000, target_attribs);
 				//status=rootvolume->Write(targetfile, &img_size, temp_buf);
 				//status=rootvolume->Close(targetfile);
-				
-
-
 		//		Print(L"Device path of current UEFI app executable image: %s\n", Volume->GetInfo()t(
 		//		EFI_DEVICE_PATH_TO_TEXT_PROTOCOL *dpttp;
 		//		EFI_GUID dpttp_guid = EFI_DEVICE_PATH_TO_TEXT_PROTOCOL_GUID;
