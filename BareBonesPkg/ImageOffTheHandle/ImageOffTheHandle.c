@@ -270,7 +270,7 @@ UefiMain (
 			EFI_FILE_PROTOCOL *hostfile = NULL;
 			//EFI_FILE_PROTOCOL *hostfile = destfile;
 			//EFI_FILE_PROTOCOL *destfile = NULL;
-			//EFI_FILE_PROTOCOL *targetfile;
+			//EFI_FILE_PROTOCOL *targetfile = NULL;
 			//UINT64 host_attribs = 0x0000000000000001 || 0x0000000000000002 || 0x0000000000000004;
 			UINT64 host_attribs = 0x0000000000000000;
 			//EFI_FILE_INFO *fileinfo;
@@ -278,7 +278,7 @@ UefiMain (
 			//VOID *fileinfo_buffer = NULL;
 			//UINTN fileinfo_buffersize = 0;
 			
-			UINTN newfile_buffersize = 0x4000;
+			UINTN newfile_buffersize = 0x2000;
 			VOID *temp_buf;
 			//UINT64 target_attribs = 0x0000000000000002 || 0x0000000000000004;
 			status = rootvolume->Open(rootvolume, &hostfile, L"\\ImageOffTheHandle.efi",0x0000000000000001, host_attribs);
@@ -311,7 +311,7 @@ UefiMain (
 					
 				/*status=hostfile->GetInfo(hostfile, &fileinfo_guid, &fileinfo_buffersize, NULL);
 				if (EFI_ERROR(status)){
-					Print(L" hmm something got effed.");
+					Print(L" hmm something got effed.\n\n");
 				} else if (status == EFI_BUFFER_TOO_SMALL){
 					status = gBS->AllocatePool(
 						AllocateAnyPages,
@@ -320,14 +320,16 @@ UefiMain (
 				
 					status=hostfile->GetInfo(hostfile, &fileinfo_guid, &fileinfo_buffersize, fileinfo);
 					if (status == EFI_SUCCESS){
-						Print(L"2nd get info call successful!");
+						Print(L"2nd get info call successful! \n\n");
 					}
 				}
 				if (status == EFI_SUCCESS){
-					Print(L"get info call successful!");
-				}*/
-				//newfile_buffersize=(fileinfo->FileSize);	
-				//Print(L"newfile buffer size is: %u", newfile_buffersize);
+					Print(L"get info call successful! \n\n");
+				}
+				UINTN testnewfile_buffersize=(fileinfo->FileSize);	
+				Print(L"newfile buffer size is: %u \n\n", &testnewfile_buffersize);
+				*/
+
 				status = gBS->AllocatePool(
 					AllocateAnyPages,
 					newfile_buffersize,
@@ -344,12 +346,29 @@ UefiMain (
 				if (status == EFI_SUCCESS){
 					Print(L"file read with ImageOffTheHandle.efi successful! \n\n");
 				}
-				status=hostfile->Close(hostfile);
 
 				// open -> write -> close target		
-				//status=rootvolume->Open(rootvolume, &targetfile, L"\\4.efi", 0x8000000000000000, target_attribs);
-				//status=rootvolume->Write(targetfile, &img_size, temp_buf);
-				//status=rootvolume->Close(targetfile);
+				//status=rootvolume->Open(rootvolume, &targetfile, L"\\4.efi", 0x8000000000000000, host_attribs);
+				
+				/*status=rootvolume->Open(rootvolume, &targetfile, L"\\4.efi", EFI_FILE_MODE_READ |  EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
+				if (EFI_ERROR(status)){
+					Print(L"error with create file call... \n\n");
+				}
+				status=targetfile->Write(targetfile, &newfile_buffersize, temp_buf);
+				if (EFI_ERROR(status)){
+					Print(L"error with writing new file... \n\n");
+				}
+				status=targetfile->Close(targetfile);
+				if (EFI_ERROR(status)){
+					Print(L"error with close file call... \n\n");
+				};
+
+				*/
+				
+				for (UINTN i=0; i < 0x1000; i++){
+					//Print(L"%c", &(temp_buf + i*sizeof(UINT16)));
+					Print(L"%c", ((CHAR8 *)temp_buf)[i]);
+				};
 		//		Print(L"Device path of current UEFI app executable image: %s\n", Volume->GetInfo()t(
 		//		EFI_DEVICE_PATH_TO_TEXT_PROTOCOL *dpttp;
 		//		EFI_GUID dpttp_guid = EFI_DEVICE_PATH_TO_TEXT_PROTOCOL_GUID;
@@ -357,7 +376,9 @@ UefiMain (
 				Print(L"Filename current UEFI app executable image: %s\n", ConvertDevicePathToText(devicefilepath ,FALSE,TRUE));
 				Print(L"Device path of current UEFI app executable image: %s\n", ConvertDevicePathToText(devicepath, FALSE,TRUE));
 				Print(L"Image size of current UEFI app executable image: %X\n", img_size);
-				gBS->FreePool(hostfile);
+				gBS->FreePool(temp_buf);
+				//gBS->FreePool(fileinfo);
+				status=hostfile->Close(hostfile);
 				rootvolume->Close(rootvolume);
 	//		for (int i=0; i < 16; i++){
 	//			//Print(L"%c", &(temp_buf + i*sizeof(UINT16)));
