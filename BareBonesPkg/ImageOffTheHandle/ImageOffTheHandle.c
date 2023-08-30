@@ -270,7 +270,7 @@ UefiMain (
 			EFI_FILE_PROTOCOL *hostfile = NULL;
 			//EFI_FILE_PROTOCOL *hostfile = destfile;
 			//EFI_FILE_PROTOCOL *destfile = NULL;
-			//EFI_FILE_PROTOCOL *targetfile = NULL;
+			EFI_FILE_PROTOCOL *targetfile = NULL;
 			//UINT64 host_attribs = 0x0000000000000001 || 0x0000000000000002 || 0x0000000000000004;
 			UINT64 host_attribs = 0x0000000000000000;
 			//EFI_FILE_INFO *fileinfo;
@@ -350,22 +350,26 @@ UefiMain (
 				// open -> write -> close target		
 				//status=rootvolume->Open(rootvolume, &targetfile, L"\\4.efi", 0x8000000000000000, host_attribs);
 				
-				/*status=rootvolume->Open(rootvolume, &targetfile, L"\\4.efi", EFI_FILE_MODE_READ |  EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
+				status  = rootvolume->Open(rootvolume, &targetfile, L"\\4.efi", EFI_FILE_MODE_READ |  EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
 				if (EFI_ERROR(status)){
 					Print(L"error with create file call... \n\n");
+				} else if (status == EFI_SUCCESS){
+					Print(L"yay create file call was successful!!\n\n");
 				}
 				status=targetfile->Write(targetfile, &newfile_buffersize, temp_buf);
 				if (EFI_ERROR(status)){
 					Print(L"error with writing new file... \n\n");
+				} else if (status == EFI_SUCCESS){
+					Print(L"yay write file call was successful!!\n\n");
 				}
 				status=targetfile->Close(targetfile);
 				if (EFI_ERROR(status)){
 					Print(L"error with close file call... \n\n");
 				};
 
-				*/
 				
-				for (UINTN i=0; i < 0x1000; i++){
+				
+				for (UINTN i=0; i < 0x100; i++){
 					//Print(L"%c", &(temp_buf + i*sizeof(UINT16)));
 					Print(L"%c", ((CHAR8 *)temp_buf)[i]);
 				};
