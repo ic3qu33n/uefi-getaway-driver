@@ -1,0 +1,42 @@
+#!/usr/bin/python3
+
+import sys, os
+import subprocess
+import re
+
+
+
+########################################################################################
+#	A simple Python script for copying EFI binaries built with EDK2 and OVMF
+#   copying the resultant .efi binary to the target root disk for QEMU
+#   and launching a qemu-system-x86_64 session for testing
+#
+#	There isn't anything *wild* or super interesting about this script
+#	tbh I just didn't want to keep typing these really long qemu commands over and over
+########################################################################################
+
+edk2_dir="/Users/nika/uefi_testing/edk2/"
+uefi_testingdir_cmd=["cd", edk2_dir, "&&", ". ./edksetup.sh"]
+
+uefi_app_build_cmd= ["build",  "--platform=BareBonesPkg/BareBonesPkg.dsc",  "--arch=X64", "--buildtarget=RELEASE", "--tagname=GCC"]
+
+target_pkg="Build/BareBonesPkg/RELEASE_GCC/X64/"
+uefi_app_name="ImageOffTheHandle.efi"
+target_uefi_app= edk2_dir + target_pkg + uefi_app_name
+target_disk="/Users/nika/uefi_testing/UEFI_bb_disk"
+
+uefi_copy_app_cmd=["cp", target_uefi_app, target_disk]
+
+uefi_app_run_cmd=["/opt/homebrew/bin/qemu-system-x86_64", "-drive", "if=pflash,format=raw,file=edk2/Build/OvmfX64/RELEASE_GCC/FV/OVMF.fd", "-drive", "format=raw,file=fat:rw:UEFI_bb_disk", "-nographic","-net","none"]
+
+if __name__ == '__main__':
+
+	try:
+		#subprocess.run(uefi_testingdir_cmd)
+		#subprocess.run(uefi_app_build_cmd)
+		subprocess.run(uefi_copy_app_cmd)
+		subprocess.run(uefi_app_run_cmd)
+	
+	except (RuntimeError, TypeError) as e:
+		print("oh no. error error: {0}".format(e))
+	

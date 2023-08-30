@@ -216,17 +216,122 @@ UefiMain (
 			&sfsp_guid,
 			(void **) &sfsp
 		);
-		EFI_FILE_PROTOCOL **volume;
-		sfsp->OpenVolume(sfsp, volume);
-		
-//		Print(L"Device path of current UEFI app executable image: %s\n", Volume->GetInfo()t(
-//		EFI_DEVICE_PATH_TO_TEXT_PROTOCOL *dpttp;
-//		EFI_GUID dpttp_guid = EFI_DEVICE_PATH_TO_TEXT_PROTOCOL_GUID;
-//		Print(L"Device path of current UEFI app executable image: %s\n", ConvertDevicePathToText(loadedimage
-		Print(L"Filename current UEFI app executable image: %s\n", ConvertDevicePathToText(devicefilepath ,FALSE,TRUE));
-		Print(L"Device path of current UEFI app executable image: %s\n", ConvertDevicePathToText(devicepath, FALSE,TRUE));
-		Print(L"Image size of current UEFI app executable image: %X\n", img_size);
-			
+		EFI_FILE_PROTOCOL *rootvolume;
+		//EFI_FILE_HANDLE rootvolume;
+		//EFI_FILE_HANDLE srcfile;
+		//EFI_FILE_HANDLE destfile;
+		status = sfsp->OpenVolume(sfsp, &rootvolume);
+		/*
+		*	
+		*	 Now copy this file to new target file with Open, Write and Close sequence
+		*	 of functions (protocols) available to EFI_FILE_PROTOCOL
+		*	
+		*	 typedef
+		*	 EFI_STATUS
+		*	 (EFIAPI *EFI_FILE_OPEN) (
+		*	   IN EFI_FILE_PROTOCOL                  *This,
+		*	   OUT EFI_FILE_PROTOCOL                 **NewHandle,
+		*	   IN CHAR16                             *FileName,
+		*	   IN UINT64                             OpenMode,
+		*	   IN UINT64                             Attributes
+		*	   );
+		*	 
+		*	
+		*	 typedef
+		*	 EFI_STATUS
+		*	 (EFIAPI *EFI_FILE_WRITE) (
+		*	   IN EFI_FILE_PROTOCOL              *This,
+		*	   IN OUT UINTN                      *BufferSize,
+		*	   IN VOID                           *Buffer
+		*	   );
+		*	 
+		*	 typedef
+		*	 EFI_STATUS
+		*	 (EFIAPI *EFI_FILE_READ) (
+		*	   IN EFI_FILE_PROTOCOL           *This,
+		*	   IN OUT UINTN                   *BufferSize,
+		*	   OUT VOID                       *Buffer
+		*	   );
+		*	
+		*	 Close():
+		*	 typedef
+		*	 EFI_STATUS
+		*	 (EFIAPI *EFI_FILE_CLOSE) (
+		*	   IN EFI_FILE_PROTOCOL                     *This
+		*	   );
+		*	
+		*/
+		if (status == EFI_SUCCESS) {
+			EFI_FILE_PROTOCOL *hostfile = NULL;
+			//EFI_FILE_PROTOCOL *hostfile = destfile;
+			//EFI_FILE_PROTOCOL *destfile = NULL;
+			//EFI_FILE_PROTOCOL *targetfile;
+			//UINT64 host_attribs = 0x0000000000000001 || 0x0000000000000002 || 0x0000000000000004;
+			UINT64 host_attribs = 0x0000000000000000;
+			//UINT64 target_attribs = 0x0000000000000002 || 0x0000000000000004;
+			status = rootvolume->Open(rootvolume, &hostfile, L"\\ImageOffTheHandle.efi",0x0000000000000001, host_attribs);
+			if (status == EFI_SUCCESS){
+				Print(L"open root volume successful\n\n!");
+				//open() -> read() -> close() host
+				//EFI_FILE_INFO *hostfileinfo;
+				
+				status = gBS->AllocatePool(
+					AllocateAnyPages,
+					img_size,
+					(void**)&hostfile); 
+				EFI_FILE_HANDLE *temp_buf;
+				//EFI_FILE_PROTOCOL *temp_buf;
+				
+				if (status == EFI_BUFFER_TOO_SMALL){
+					status = gBS->AllocatePool(
+						AllocateAnyPages,
+						img_size,
+						(void**)&hostfile); 
+					
+					if (status==EFI_SUCCESS){
+						Print(L"allocate pool for file read successful!\n\n");
+					}
+				} else {
+
+						Print(L"initial allocate pool for file read successful!\n\n");
+				}	
+				
+				//EFI_FILE_HANDLE is a void* so this takes care of param requirements for this function
+				
+	//			UINTN target_filesz=img_size;
+				//status=rootvolume->Read(hostfile, &img_size, &temp_buf);
+				status=hostfile->Read(hostfile, &img_size, temp_buf);
+				if (status == EFI_SUCCESS){
+					Print(L"file read with ImageOffTheHandle.efi successful! \n\n");
+				};
+				status=hostfile->Close(hostfile);
+
+				// open -> write -> close target		
+				//status = rootvolume->Open(rootvolume, &targetfile, L"\\4.efi", 0x8000000000000000, target_attribs);
+				//status=rootvolume->Write(targetfile, &img_size, temp_buf);
+				//status=rootvolume->Close(targetfile);
+				
+
+
+		//		Print(L"Device path of current UEFI app executable image: %s\n", Volume->GetInfo()t(
+		//		EFI_DEVICE_PATH_TO_TEXT_PROTOCOL *dpttp;
+		//		EFI_GUID dpttp_guid = EFI_DEVICE_PATH_TO_TEXT_PROTOCOL_GUID;
+		//		Print(L"Device path of current UEFI app executable image: %s\n", ConvertDevicePathToText(loadedimage
+				Print(L"Filename current UEFI app executable image: %s\n", ConvertDevicePathToText(devicefilepath ,FALSE,TRUE));
+				Print(L"Device path of current UEFI app executable image: %s\n", ConvertDevicePathToText(devicepath, FALSE,TRUE));
+				Print(L"Image size of current UEFI app executable image: %X\n", img_size);
+				gBS->FreePool(hostfile);
+				rootvolume->Close(rootvolume);
+	//		for (int i=0; i < 16; i++){
+	//			//Print(L"%c", &(temp_buf + i*sizeof(UINT16)));
+	//			Print(L"%c", temp_buf[i]);
+	//		};
+			} else {
+				Print(L" hmm open root volum unsuccessful... something got effed.");
+			}
+		} else {
+			Print(L" hmm something got effed.");
+		}
 	}
 	return status;		
 
