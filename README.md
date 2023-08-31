@@ -7,10 +7,10 @@ A collection of bb drivers for uefi
 vroom vroom  
 
 
-*I am not responsible with any damage you incur to the digital assets of anyone by your use of this software. I am not responsible for what you do with these drivers. 
-Obey the speed limits  
-Eat your vegetables*  
-    
-k luv u so much  
-xoxo   
-ic3qu33n  
+*I am not responsible for any damage you incur to the digital assets of anyone by your use of this software. I am not responsible for what you do with these drivers. Practice safe driving.   
+Obey the speed limits   
+Eat your vegetables*   
+     
+k luv u so much    
+xoxo     
+ic3qu33n    

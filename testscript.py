@@ -29,6 +29,9 @@ uefi_copy_app_cmd=["cp", target_uefi_app, target_disk]
 
 uefi_app_run_cmd=["/opt/homebrew/bin/qemu-system-x86_64", "-drive", "if=pflash,format=raw,file=edk2/Build/OvmfX64/RELEASE_GCC/FV/OVMF.fd", "-drive", "format=raw,file=fat:rw:UEFI_bb_disk", "-nographic","-net","none"]
 
+uefi_app_run_debug_cmd=["/opt/homebrew/bin/qemu-system-x86_64", "-drive", "if=pflash,format=raw,file=/Users/nika/uefi_testing/edk2/Build/OvmfX64/DEBUG_GCC/FV/OVMF.fd", "-drive", "format=raw,file=fat:rw:UEFI_bb_disk", "-nographic","-net","none","-global","isa-debugcon.iobase=0x402","-debugcon","file:debug.log", "-s"]
+
+
 if __name__ == '__main__':
 
 	try:

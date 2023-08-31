@@ -45,3 +45,7 @@ edk2/.git*
 edk2/.mailmap 
 edk2/.mergify 
 edk2/.pytool
+
+##Debug files
+debug.log
+ovmfdebugfd_path.txt
