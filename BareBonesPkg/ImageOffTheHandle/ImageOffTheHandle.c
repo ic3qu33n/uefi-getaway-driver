@@ -282,7 +282,8 @@ EFI_STATUS
 			EFI_FILE_PROTOCOL *targetfile = NULL;
 			UINT64 host_attribs = 0x0000000000000000;
 			
-			UINTN newfile_buffersize = 0x2000;
+			//set buffer size (destination file img_size) == original img_size	
+			UINTN newfile_buffersize =(UINTN) img_size;
 			VOID *temp_buf;
 			EFI_FILE_OPEN *open_func=&(rootvolume->Open);
 			Print(L"Boot Services Table address is: %p \n\n", &gBS);	
@@ -291,28 +292,6 @@ EFI_STATUS
 			if (status == EFI_SUCCESS){
 				Print(L"open root volume successful\n\n!");
 				
-					
-				/*status=hostfile->GetInfo(hostfile, &fileinfo_guid, &fileinfo_buffersize, NULL);
-				if (EFI_ERROR(status)){
-					Print(L" hmm something got effed.\n\n");
-				} else if (status == EFI_BUFFER_TOO_SMALL){
-					status = gBS->AllocatePool(
-						AllocateAnyPages,
-						fileinfo_buffersize,
-						(void**)&fileinfo); 
-				
-					status=hostfile->GetInfo(hostfile, &fileinfo_guid, &fileinfo_buffersize, fileinfo);
-					if (status == EFI_SUCCESS){
-						Print(L"2nd get info call successful! \n\n");
-					}
-				}
-				if (status == EFI_SUCCESS){
-					Print(L"get info call successful! \n\n");
-				}
-				UINTN testnewfile_buffersize=(fileinfo->FileSize);	
-				Print(L"newfile buffer size is: %u \n\n", &testnewfile_buffersize);
-				*/
-
 				status = gBS->AllocatePool(
 					AllocateAnyPages,
 					newfile_buffersize,
