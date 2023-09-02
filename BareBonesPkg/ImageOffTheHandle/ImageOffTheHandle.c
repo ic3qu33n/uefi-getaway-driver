@@ -196,11 +196,18 @@ EFI_STATUS
 	EFI_GUID lip_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 	EFI_STATUS status;
 	
+	Print(L"EFI SYSTEM TABLE pointer address: %p \n", &SystemTable);
+	Print(L"EFI BOOT SERVICES TABLE pointer  address is: %p \n\n", &gBS);	
+	Print(L"EFI_LOADED_IMAGE_PROTOCOL pointer  address is: %p \n\n", &loadedimageprotocol);	
+	
 	status = gBS->HandleProtocol(
 		ImageHandle,
 		&lip_guid,
 		(void **) &loadedimageprotocol
 	);
+	void* gbs_handle_protocol = (gBS->HandleProtocol);
+	Print(L"Boot Services HandleProtocol pointer  address is: %p \n\n", &gbs_handle_protocol);
+	
 	if (status == EFI_SUCCESS) {
 		EFI_HANDLE devicehandle = loadedimageprotocol->DeviceHandle;
 		EFI_DEVICE_PATH_PROTOCOL *devicefilepath = (loadedimageprotocol->FilePath);

@@ -28,3 +28,5 @@
 	DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
 	UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
 
+[BuildOptions]
+	GCC:*_*_*_CC_FLAGS   = -O0
