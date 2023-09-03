@@ -1,5 +1,5 @@
-bits 64
-;
+BITS 64
+section .header;
 ; ***References***
 ;
 ;	The following UEFI executable is made possible thanks to the work of the following:
@@ -84,23 +84,26 @@ bits 64
 ;	uint32_t mNumberOfRvaAndSizes;
 ;};
 
-
+START:
+PE:
+header_start:
 mzheader:
-	dd "MZ" 		;  DOS e_magic
-	dw 0x1		 	;  DOS e_cp
-	dw 0x0			;  DOS e_crlc
-	dw 0x4			;  DOS e_cparhdr
-	dw 0x10			;  DOS e_minalloc
-	dd 0xffff 		;  DOS e_maxalloc
-
-	dw 0 			;  DOS e_ss
-	dw 0x140		;  DOS e_sp
-	dw 0			;  DOS e_csum
-	dw 0			;  DOS e_ip
-	dw 0			;  DOS e_cs
-	dw 0x40			;  DOS e_lfarlc
-	times 62-($-$$) db 0
-	dw 0x40
+	dw "MZ" 		;  DOS e_magic
+	dw 0x100
+;	dw 0x1		 	;  DOS e_cp
+;	dw 0x0			;  DOS e_crlc
+;	dw 0x4			;  DOS e_cparhdr
+;	dw 0x10			;  DOS e_minalloc
+;	dd 0xffff 		;  DOS e_maxalloc
+;;
+;	dw 0 			;  DOS e_ss
+;	dw 0x140		;  DOS e_sp
+;	dw 0			;  DOS e_csum
+;	dw 0			;  DOS e_ip
+;	dw 0			;  DOS e_cs
+;	dw 0x40			;  DOS e_lfarlc
+;	times 62-($-$$) db 0
+;	dw 0x40
 ;
 ; MZ header re
 ; using the output vals from pe-parse to reconstruct  valid header for an efi bin
@@ -127,62 +130,113 @@ pe_header:
 ;
 ;	;times 14 db 0
 ;
-	dw 1			;	uint16_t mNumberOfSections;
+	dw 2			;	uint16_t mNumberOfSections;
 	dd 0x0 			;	uint32_t mTimeDateStamp;
 	dd 0x0			;	uint32_t mPointerToSymbolTable;
 	dd 0x0			;	uint32_t mNumberOfSymbols;
 
-	dw 0xf0 		;	uint16_t mSizeOfOptionalHeader;
-	dw 0x2f 		;	uint16_t mCharacteristics;
+	dw sectionHeader - opt_header	 		;	uint16_t mSizeOfOptionalHeader;
+	dw 0x202e 		;	uint16_t mCharacteristics;
 opt_header:
 	dw 0x20B		;	uint16_t mMagic; // 0x010b - PE32, 0x020b - PE32+ (64 bit)
 ;
 ;	times 12 db 0
 
-	db 1				;	uint8_t  mMajorLinkerVersion;
-	db 73				;	uint8_t  mMinorLinkerVersion;
-	dd 0				;	uint32_t mSizeOfCode;
-	dd 0				;	uint32_t mSizeOfInitializedData;
+	db 0				;	uint8_t  mMajorLinkerVersion;
+	db 0				;	uint8_t  mMinorLinkerVersion;
+;	dd 0x100				;	uint32_t mSizeOfCode;
+	dd _end - _start			;	uint32_t mSizeOfCode;
+	dd _dataend - _datastart	;	uint32_t mSizeOfInitializedData;
 	dd 0				;	uint32_t mSizeOfUninitializedData;
 
 					
 	dd $_start		;	uint32_t mAddressOfEntryPoint;
+;	dd 0x3000		;	uint32_t mAddressOfEntryPoint;
+	;dd 0x1000		;	uint32_t mAddressOfEntryPoint;
+	;dd _start - START		;	uint32_t mAddressOfEntryPoint;
 
 ;	times 10 db 0
 ;
-	dd 0			;	uint32_t mBaseOfCode;
+	dd 0x1000		;	uint32_t mBaseOfCode;
+;	dd 0x3000		;	uint32_t mBaseOfCode;
+;	dd _start - START		;	uint32_t mBaseOfCode;
 
-	dd 0x400000		;	uint32_t mImageBase;
-	dd 0x1000		;	uint32_t mSectionAlignment;
-	dd 0x200		;	uint32_t mFileAlignment;
+	dq 0x0		;	uint32_t mImageBase;
+	dd 0x4		;	uint32_t mSectionAlignment;
+	dd 0x4		;	uint32_t mFileAlignment;
 
 ;	times 8 db 0
 ;	[this might be an incorrect placement of 8 null bytes so tbd on deleting this one]
+	dw 0			;	uint16_t mMajorOperatingSystemVersion;
+	dw 0			;	uint16_t mMinorOperatingSystemVersion;
+	dw 0 			;	uint16_t mMajorImageVersion;
+	dw 0			;	uint16_t mMinorImageVersion;
 
-	dw 1			;	uint16_t mMajorSubsystemVersion;
+	dw 0			;	uint16_t mMajorSubsystemVersion;
 	dw 0			;	uint16_t mMinorSubsystemVersion;  can be blank, still times 4 db 0
 	dd 0			;	uint32_t mWin32VersionValue;
 
+	;dd 0xf000  		;	uint32_t mSizeOfImage;
 	dd 0x3000  		;	uint32_t mSizeOfImage;
-	dd 0x200			;	uint32_t mSizeOfHeaders;
-	times 4 db 0
+	dd header_end - header_start			;	uint32_t mSizeOfHeaders;
+	;times 4 db 0
+	dd 0			;	uint32_t mCheckSum;
 	dw 0xa			;	uint16_t mSubsystem;
 	dw 0x0			;	uint16_t mDllCharacteristics;
-	dd 0x1000		;	uint32_t mSizeOfStackReserve;
-	dd 0x1000		;	uint32_t mSizeOfStackCommit;
-	dd 0x100000		;	uint32_t mSizeOfHeapReserve;
+	dq 0x0			;	uint32_t mSizeOfStackReserve;
+	dq 0x0			;	uint32_t mSizeOfStackCommit;
+	dq 0x0			;	uint32_t mSizeOfHeapReserve;
 ;	times 22 db 0
 ;	[this might be an incorrect placement of 8 null bytes so tbd on deleting this one]
-	dd 0			;	uint32_t mSizeOfHeapCommit;
-	dd 0			;	uint32_t mLoaderFlags;
-	dd 16			;	uint32_t mNumberOfRvaAndSizes;
-;datadirs:
+	dq 0x0			;	uint32_t mSizeOfHeapCommit;
+	dd 0x0			;	uint32_t mLoaderFlags;
+	dd 0x6			;	uint32_t mNumberOfRvaAndSizes;
+datadirs:
+	dq 0	
+	dq 0	
+	dq 0	
+	dq 0	
+	dq 0	
+	dq 0	
 	;times 32 db 0
 	;times 112 db 0
 
-_ohhello:	db __utf16__ 'oh hello there', 13, 10, 0	
-		
+optend:
+
+SECTS:
+
+sectionHeader:					;struct IMAGE_SECTION_HEADER { // size 40 bytes
+	db ".text",0,0,0			;	char[8]  mName;
+	dd _end - _start		 	;	uint32_t mVirtualSize;
+	dd _start - START			;	uint32_t mVirtualAddress;
+	dd _end - _start			;	uint32_t mSizeOfRawData;
+	dd _start - START			;	uint32_t mPointerToRawData;
+	dd 0						;	uint32_t mPointerToRelocations;
+	dd 0						;	uint32_t mPointerToLinenumbers;
+	dw 0						;	uint16_t mNumberOfRelocations;
+	dw 0						;	uint16_t mNumberOfLinenumbers;
+	dd 0x60500020				;	uint32_t mCharacteristics;
+								;};
+dataSectionHeader:					;struct IMAGE_SECTION_HEADER { // size 40 bytes
+	db ".data",0,0,0			;	char[8]  mName;
+	dd _dataend - _datastart		 	;	uint32_t mVirtualSize;
+	dd _datastart - START				;	uint32_t mVirtualAddress;
+	dd _dataend - _datastart			;	uint32_t mSizeOfRawData;
+	dd _datastart - START					;	uint32_t mPointerToRawData;
+	dd 0						;	uint32_t mPointerToRelocations;
+	dd 0						;	uint32_t mPointerToLinenumbers;
+	dw 0						;	uint16_t mNumberOfRelocations;
+	dw 0						;	uint16_t mNumberOfLinenumbers;
+	dd 0xD0000040				;	uint32_t mCharacteristics;
+								;};
+	;align 4
+	times 512-($-$$) db 0
+;	times 512-($-START) db 0
+header_end:	
+	
+section .text follows=.header
 _start:
+;	align 4
 	mov rcx, [rdx + 0x40] 	;SystemTable in rdx upon efi program invovation
 	mov rax, [rcx + 0x8]				;
 	mov rdx, $_ohhello
@@ -191,9 +245,23 @@ _start:
 	add rsp, 32
 	retn
 
+;	_ohhello:	db __utf16__ 'oh hello there', 13, 10, 0
 ;; required 28 bytes of paddiing to conform to the f*d spec 
 ;; 28 bytes isn't even nicely aligned along a 16byte boundary so idfk
-;;  
+	;align 4
+	;padding:
+	;	times 64-($-_start) db 90
+	;	times 272-($-mzheader) db 90
+	times 1024-($-$$) db 90
+_end:
 
-padding:
-	times 268-($-$$) db 0
+;.data
+section .data follows=.text
+_datastart:
+	;_ohhello:	db __utf16__ 'oh hello there', 13, 10, 0
+	_ohhello:	db __utf16__ 'oh hello there\0'
+	times 512-($-$$) db 0
+	;align 4
+_dataend:	
+
+
