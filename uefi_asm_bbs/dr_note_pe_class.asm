@@ -332,7 +332,7 @@ entrypoint:
 
 	push rbp
 	mov rbp, rsp
-	sub rsp, 32
+	sub rsp, 64
 	;sub rsp, 56
 	lea rbx, [rdx + 0x60]
 	mov [gBS], rbx
@@ -355,7 +355,10 @@ entrypoint:
 	call rax
 	cmp rax, EFI_SUCCESS
 	je success_print
-	jne exit
+	lea rcx, HostFilename
+	call print
+	jmp exit
+	;jne exit
 
 success_print:
 	lea rcx, HandleProtocolCheck
@@ -369,25 +372,26 @@ success_print:
 	mov rbx, [rax + 0x18]
 	lea rdx, [rbx]
 	;mov [FilePath], rbx
-	lea rcx, FilePath	
-
+	;lea rcx, FilePath	
+	lea rdx, HostFilename
+	call print
+	jmp exit
 
 print:										;Print function
+	mov rdx, rcx
 	mov rcx, [gST]
 	mov rcx, [rcx + 0x40]
 	mov rax, qword [rcx+0x8]				
 	;lea rdx, HostFilename
-	mov rdx, rcx
 	;lea rdx, FilePath
 
 	call rax
-
-	jmp exit
+	ret
 
 
 exit:
 	;add rsp, 56
-	add rsp, 32
+	add rsp, 64
 	pop rbp
 	ret                       ; Get outta there
   
