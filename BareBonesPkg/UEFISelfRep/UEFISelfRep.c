@@ -175,7 +175,7 @@ CHAR16*
   );
 
 
- 
+ ##This was the original function call used, changed to OpenProtocol() 
  Use BootServices-> HandleProtocol to retrieve pointer to LoadedImageProtocol interface 
 typedef
 EFI_STATUS
@@ -184,6 +184,40 @@ EFI_STATUS
    IN EFI_GUID                      *Protocol,
    OUT VOID                         **Interface
    );
+
+
+Use OpenProtocol()
+typedef
+EFI_STATUS
+(EFIAPI *EFI_OPEN_PROTOCOL) (
+   IN EFI_HANDLE                    Handle,
+   IN EFI_GUID                      *Protocol,
+   OUT VOID                         **Interface OPTIONAL,
+   IN EFI_HANDLE                    AgentHandle,
+   IN EFI_HANDLE                    ControllerHandle,
+   IN UINT32                        Attributes
+   );
+
+
+Relevant Attributes:
+#define EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL   0x00000001
+#define EFI_OPEN_PROTOCOL_GET_PROTOCOL         0x00000002
+#define EFI_OPEN_PROTOCOL_TEST_PROTOCOL        0x00000004
+#define EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER  0x00000008
+#define EFI_OPEN_PROTOCOL_BY_DRIVER            0x00000010
+#define EFI_OPEN_PROTOCOL_EXCLUSIVE            0x00000020
+
+
+EFI_LOADED_IMAGE_PROTOCOL *loadedimageprotocol;
+gBS->OpenProtocol(
+ImageHandle,
+&lip_guid,
+(void**)&loadedimageprotocol,
+ImageHandle,
+NULL,
+EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
+
+
  Use LoadedImageProtocol->DeviceHandle as Input EFI_HANDLE for another call
  now, use  BootServices-> HandleProtocol to retrieve pointer to i
  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL interface 
@@ -200,12 +234,20 @@ EFI_STATUS
 	Print(L"EFI SYSTEM TABLE pointer address: %p \n", &SystemTable);
 	Print(L"EFI BOOT SERVICES TABLE pointer  address is: %p \n\n", &gBS);	
 	Print(L"EFI_LOADED_IMAGE_PROTOCOL pointer  address is: %p \n\n", &loadedimageprotocol);	
-*/	
+	
 	status = gBS->HandleProtocol(
 		ImageHandle,
 		&lip_guid,
 		(void **) &loadedimageprotocol
 	);
+*/	
+	status= gBS->OpenProtocol(
+		ImageHandle,
+		&lip_guid,
+		(void**)&loadedimageprotocol,
+		ImageHandle,
+		NULL,
+		EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
 	
 /*
 	void* gbs_handle_protocol = (gBS->HandleProtocol);
@@ -213,17 +255,19 @@ EFI_STATUS
 */
 	
 	if (status == EFI_SUCCESS) {
+		Print(L"EFI BootServices OpenProtocol call with loadedimageprotocol was successful: %p \n", &loadedimageprotocol);
 		EFI_HANDLE devicehandle = loadedimageprotocol->DeviceHandle;
+		//	EFI_HANDLE devicehandle = NULL;
 
 /*
 		EFI_DEVICE_PATH_PROTOCOL *devicefilepath = (loadedimageprotocol->FilePath);
 */
 		UINT64 img_size=loadedimageprotocol->ImageSize;
-		EFI_DEVICE_PATH_PROTOCOL *devicepath;
+//		EFI_DEVICE_PATH_PROTOCOL *devicepath;
 		EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *sfsp;
 		EFI_GUID sfsp_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
 		
-		EFI_GUID e_lidpp_guid= EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL_GUID;
+/*		EFI_GUID e_lidpp_guid= EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL_GUID;
 
 		status = gBS->HandleProtocol(
 			ImageHandle,
@@ -237,10 +281,19 @@ EFI_STATUS
 			(void **) &sfsp
 		);
 
-/*
 		Print(L"EFI_SIMPLE_FILE_SYSTEM_PROTOCOL pointer  address is: %p \n\n", &sfsp);	
 		Print(L"EFI_DEVICE_PATH_PROTOCOL pointer  address is: %p \n\n", &devicepath);	
 */		
+		status= gBS->OpenProtocol(
+			devicehandle,
+			&sfsp_guid,
+			(void**)&sfsp,
+			ImageHandle,
+			NULL,
+			EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+		if (status == EFI_SUCCESS) {
+			Print(L"EFI BootServices OpenProtocol call with simplefilesystemprotocol was successful: %p \n", &loadedimageprotocol);
+		}
 		EFI_FILE_PROTOCOL *rootvolume;
 		status = sfsp->OpenVolume(sfsp, &rootvolume);
 /*		
