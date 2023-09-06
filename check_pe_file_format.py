@@ -3,7 +3,7 @@
 import sys, os
 import subprocess
 import re
-
+import pefile
 
 
 ########################################################################################
@@ -15,16 +15,20 @@ import re
 #	tbh I just didn't want to keep typing these really long qemu commands over and over
 ########################################################################################
 
-edk2_dir="/Users/nika/uefi_testing/edk2/"
-uefi_testingdir_cmd=["cd", edk2_dir, "&&", ". ./edksetup.sh"]
+workspace="$WORKSPACE"
+edk2_dir= workspace + "edk2/"
+uefi_asm_dir= workspace + "uefi_asm_bbs/"
+#uefi_testingdir_cmd=["cd", edk2_dir, "&&", ". ./edksetup.sh"]
 
-uefi_app_build_cmd= ["build",  "--platform=BareBonesPkg/BareBonesPkg.dsc",  "--arch=X64", "--buildtarget=RELEASE", "--tagname=GCC"]
+#uefi_app_build_cmd= ["build",  "--platform=BareBonesPkg/BareBonesPkg.dsc",  "--arch=X64", "--buildtarget=RELEASE", "--tagname=GCC"]
 
 target_pkg="Build/BareBonesPkg/RELEASE_GCC/X64/"
-#uefi_app_name="ImageOffTheHandle.efi"
-uefi_app_name="UEFISelfRep.efi"
-target_uefi_app= edk2_dir + target_pkg + uefi_app_name
-target_disk="/Users/nika/uefi_testing/UEFI_bb_disk"
+uefi_app_name="dr-note-pe-class.efi"
+baseline_uefi_app_name="oh-hello-efi.efi"
+target_uefi_app= uefi_asm_dir + uefi_app_name
+baseline_uefi_app= uefi_asm_dir + baseline_uefi_app_name
+
+target_disk= workspace + "/UEFI_bb_disk"
 
 uefi_copy_app_cmd=["cp", target_uefi_app, target_disk]
 
@@ -34,12 +38,16 @@ uefi_app_run_debug_cmd=["/opt/homebrew/bin/qemu-system-x86_64", "-drive", "if=pf
 
 
 if __name__ == '__main__':
-
 	try:
-		#subprocess.run(uefi_testingdir_cmd)
-		#subprocess.run(uefi_app_build_cmd)
-		subprocess.run(uefi_copy_app_cmd)
-		subprocess.run(uefi_app_run_cmd)
+	#	subprocess.run(uefi_copy_app_cmd)
+
+		pe=pefile.PE(target_uefi_app)
+		print(pe.dump_info())	
+		
+		#baseline_pe=pefile.PE(target_uefi_app)
+		#print("*** Info about baseline file: \n\n")	
+		#print(baseline_pe.dump_info())	
+		
 	
 	except (RuntimeError, TypeError) as e:
 		print("oh no. error error: {0}".format(e))

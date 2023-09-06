@@ -11,6 +11,7 @@
 [Components]
 	BareBonesPkg/BareBonesApp/BareBonesApp.inf
 	BareBonesPkg/ImageOffTheHandle/ImageOffTheHandle.inf
+	BareBonesPkg/UEFISelfRep/UEFISelfRep.inf
 
 
 [LibraryClasses]

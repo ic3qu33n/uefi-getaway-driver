@@ -253,19 +253,60 @@ section .text follows=.header
 
 global _start
 
-codestart:	
+codestart:
+	EFI_SUCCESS										equ 0
+	
 	EFI_BOOTSERVICES_ALLOCATEPOOL_OFFSET 			equ 0x40
 	EFI_BOOTSERVICES_HANDLEPROTOCOL_OFFSET 			equ 0x98
 	EFI_BOOTSERVICES_HANDLEPROTOCOL_OFFSET 			equ 0x98
+	
 	EFI_LOADED_IMAGE_PROTOCOL_DEVICEHANDLE_OFFSET 	equ 0x18
 	EFI_LOADED_IMAGE_PROTOCOL_FILEPATH_OFFSET		equ 0x20
 	EFI_LOADED_IMAGE_PROTOCOL_IMAGESIZE_OFFSET		equ 0x48
 
+	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_OPENVOLUME_OFFSET		equ 0x8
+	
 	EFI_LOADED_IMAGE_PROTOCOL_GUID		db  0x5B, 0x1B, 0x31, 0xA1, 0x95, 0x62, 0x11, 0xd2 
 										db 0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B
 
 	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID 	db 0x96, 0x4e, 0x5b, 0x22,0x64,0x59,0x11,0xd2
 										db 0x8e,0x39,0x00,0xa0,0xc9,0x69,0x72,0x3b
+
+;
+; 		 From: https://uefi.org/specs/UEFI/2.10/13_Protocols_Media_Access.html#simple-file-system-protocol
+;
+;		 typedef struct _EFI_SIMPLE_FILE_SYSTEM_PROTOCOL {
+;		  UINT64                                         Revision;
+;		  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_OPEN_VOLUME    OpenVolume;
+;		 } EFI_SIMPLE_FILE_SYSTEM_PROTOCOL;
+;
+
+;
+;		 typedef
+;		 EFI_STATUS
+;		 (EFIAPI *EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_OPEN_VOLUME) (
+;		   IN EFI_SIMPLE_FILE_SYSTEM PROTOCOL                   *This,
+;		   OUT EFI_FILE_PROTOCOL                                **Root
+;		   );
+;		 typedef struct_EFI_FILE_PROTOCOL {
+;		   UINT64                          Revision;
+;		   EFI_FILE_OPEN                   Open;
+;		   EFI_FILE_CLOSE                  Close;
+;		   EFI_FILE_DELETE                 Delete;
+;		   EFI_FILE_READ                   Read;
+;		   EFI_FILE_WRITE                  Write;
+;		   EFI_FILE_GET_POSITION           GetPosition;
+;		   EFI_FILE_SET_POSITION           SetPosition;
+;		   EFI_FILE_GET_INFO               GetInfo;
+;		   EFI_FILE_SET_INFO               SetInfo;
+;		   EFI_FILE_FLUSH                  Flush;
+;		   EFI_FILE_OPEN_EX                OpenEx; // Added for revision 2
+;		   EFI_FILE_READ_EX                ReadEx; // Added for revision 2
+;		   EFI_FILE_WRITE_EX               WriteEx; // Added for revision 2
+;		   EFI_FILE_FLUSH_EX               FlushEx; // Added for revision 2
+;		 } EFI_FILE_PROTOCOL;
+
+
 
 _start:
 entrypoint:
@@ -312,11 +353,32 @@ entrypoint:
 	lea r8, [LoadedImageProtocol]
 
 	call rax
-											;Print function
+	cmp rax, EFI_SUCCESS
+	je success_print
+	jne exit
+
+success_print:
+	lea rcx, HandleProtocolCheck
+	call print
+	
+
+	mov rax, [LoadedImageProtocol]
+	mov rbx, [rax + EFI_LOADED_IMAGE_PROTOCOL_DEVICEHANDLE_OFFSET]
+	mov [DeviceHandle], rbx
+
+	mov rbx, [rax + 0x18]
+	lea rdx, [rbx]
+	;mov [FilePath], rbx
+	lea rcx, FilePath	
+
+
+print:										;Print function
 	mov rcx, [gST]
 	mov rcx, [rcx + 0x40]
 	mov rax, qword [rcx+0x8]				
-	lea rdx, HostFilename
+	;lea rdx, HostFilename
+	mov rdx, rcx
+	;lea rdx, FilePath
 
 	call rax
 
@@ -367,6 +429,9 @@ _datastart:
 	FilePath				dq 0
 	ImageSize 				dq 0
 	HostFilename 			db __utf16__ 'ImageOffTheHandle.efi\0'
+	HandleProtocolCheck 			db __utf16__ 'HandleProtocol call with ImageHandle successful\r\n\0'
+	RootVolume				dq 0
+	SimpleFilesystemProtocol 	dq 0
 	;FilePath				times 36 du 0
 	;times 512-($-$$) db 0
 	align 4
