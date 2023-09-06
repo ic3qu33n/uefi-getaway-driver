@@ -133,7 +133,7 @@ pe_header:
 ;
 ;	;times 14 db 0
 ;
-	dw 2			;	uint16_t mNumberOfSections;
+	dw 3			;	uint16_t mNumberOfSections;
 	dd 0x0 			;	uint32_t mTimeDateStamp;
 	dd 0x0			;	uint32_t mPointerToSymbolTable;
 	dd 0x0			;	uint32_t mNumberOfSymbols;
@@ -232,6 +232,18 @@ dataSectionHeader:					;struct IMAGE_SECTION_HEADER { // size 40 bytes
 	dw 0						;	uint16_t mNumberOfLinenumbers;
 	dd 0xD0000040				;	uint32_t mCharacteristics;
 								;};
+relocSectionHeader:					;struct IMAGE_SECTION_HEADER { // size 40 bytes
+	db ".reloc",0,0,0			;	char[8]  mName;
+	dd 0		 				;	uint32_t mVirtualSize;
+	dd 0						;	uint32_t mVirtualAddress;
+	dd 0						;	uint32_t mSizeOfRawData;
+	dd 0						;	uint32_t mPointerToRawData;
+	dd 0						;	uint32_t mPointerToRelocations;
+	dd 0						;	uint32_t mPointerToLinenumbers;
+	dw 0						;	uint16_t mNumberOfRelocations;
+	dw 0						;	uint16_t mNumberOfLinenumbers;
+	dd 0x00000000				;	uint32_t mCharacteristics;
+								;};
 	align 4
 	;times 512-($-$$) db 0
 ;	times 512-($-START) db 0
@@ -242,8 +254,13 @@ section .text follows=.header
 global _start
 
 codestart:	
-	EFI_BOOTSERVICES_ALLOCATEPOOL_OFFSET 		equ 0x40
-	EFI_BOOTSERVICES_HANDLEPROTOCOL_OFFSET 		equ 0x98
+	EFI_BOOTSERVICES_ALLOCATEPOOL_OFFSET 			equ 0x40
+	EFI_BOOTSERVICES_HANDLEPROTOCOL_OFFSET 			equ 0x98
+	EFI_BOOTSERVICES_HANDLEPROTOCOL_OFFSET 			equ 0x98
+	EFI_LOADED_IMAGE_PROTOCOL_DEVICEHANDLE_OFFSET 	equ 0x18
+	EFI_LOADED_IMAGE_PROTOCOL_FILEPATH_OFFSET		equ 0x20
+	EFI_LOADED_IMAGE_PROTOCOL_IMAGESIZE_OFFSET		equ 0x48
+
 	EFI_LOADED_IMAGE_PROTOCOL_GUID		db  0x5B, 0x1B, 0x31, 0xA1, 0x95, 0x62, 0x11, 0xd2 
 										db 0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B
 
@@ -273,8 +290,9 @@ entrypoint:
 	mov [gST], rdx
 
 	push rbp
-	mov rsp, rbp
+	mov rbp, rsp
 	sub rsp, 32
+	;sub rsp, 56
 	lea rbx, [rdx + 0x60]
 	mov [gBS], rbx
 	
@@ -294,6 +312,19 @@ entrypoint:
 	lea r8, [LoadedImageProtocol]
 
 	call rax
+											;Print function
+	mov rcx, [gST]
+	mov rcx, [rcx + 0x40]
+	mov rax, qword [rcx+0x8]				
+	lea rdx, HostFilename
+
+	call rax
+
+	jmp exit
+
+
+exit:
+	;add rsp, 56
 	add rsp, 32
 	pop rbp
 	ret                       ; Get outta there
@@ -335,7 +366,8 @@ _datastart:
 	DeviceHandle			dq 0
 	FilePath				dq 0
 	ImageSize 				dq 0
-
+	HostFilename 			db __utf16__ 'ImageOffTheHandle.efi\0'
+	;FilePath				times 36 du 0
 	;times 512-($-$$) db 0
 	align 4
 _dataend:	
