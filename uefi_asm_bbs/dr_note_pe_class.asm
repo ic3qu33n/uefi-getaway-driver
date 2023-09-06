@@ -1,4 +1,7 @@
 BITS 64
+
+default rel
+
 section .header;
 ; ***References***
 ;
@@ -136,7 +139,7 @@ pe_header:
 	dd 0x0			;	uint32_t mNumberOfSymbols;
 
 	dw sectionHeader - opt_header	 		;	uint16_t mSizeOfOptionalHeader;
-	dw 0x202e 		;	uint16_t mCharacteristics;
+	dw 0x0206 		;	uint16_t mCharacteristics;
 opt_header:
 	dw 0x20B		;	uint16_t mMagic; // 0x010b - PE32, 0x020b - PE32+ (64 bit)
 ;
@@ -145,19 +148,20 @@ opt_header:
 	db 0				;	uint8_t  mMajorLinkerVersion;
 	db 0				;	uint8_t  mMinorLinkerVersion;
 ;	dd 0x100				;	uint32_t mSizeOfCode;
-	dd _end - _start			;	uint32_t mSizeOfCode;
+	dd _codeend - codestart			;	uint32_t mSizeOfCode;
 	dd _dataend - _datastart	;	uint32_t mSizeOfInitializedData;
 	dd 0				;	uint32_t mSizeOfUninitializedData;
 
 					
-	dd $_start		;	uint32_t mAddressOfEntryPoint;
+	dd entrypoint - START		;	uint32_t mAddressOfEntryPoint;
 ;	dd 0x3000		;	uint32_t mAddressOfEntryPoint;
 	;dd 0x1000		;	uint32_t mAddressOfEntryPoint;
 	;dd _start - START		;	uint32_t mAddressOfEntryPoint;
 
 ;	times 10 db 0
 ;
-	dd 0x1000		;	uint32_t mBaseOfCode;
+	;dd 0x1000		;	uint32_t mBaseOfCode;
+	dd entrypoint - START		;	uint32_t mBaseOfCode;
 ;	dd 0x3000		;	uint32_t mBaseOfCode;
 ;	dd _start - START		;	uint32_t mBaseOfCode;
 
@@ -177,7 +181,8 @@ opt_header:
 	dd 0			;	uint32_t mWin32VersionValue;
 
 	;dd 0xf000  		;	uint32_t mSizeOfImage;
-	dd 0x3000  		;	uint32_t mSizeOfImage;
+	;dd 0x3000  		;	uint32_t mSizeOfImage;
+	dd end - START  		;	uint32_t mSizeOfImage;
 	dd header_end - header_start			;	uint32_t mSizeOfHeaders;
 	;times 4 db 0
 	dd 0			;	uint32_t mCheckSum;
@@ -200,16 +205,14 @@ datadirs:
 	dq 0	
 	;times 32 db 0
 	;times 112 db 0
-
 optend:
 
 SECTS:
-
 sectionHeader:					;struct IMAGE_SECTION_HEADER { // size 40 bytes
 	db ".text",0,0,0			;	char[8]  mName;
-	dd _end - _start		 	;	uint32_t mVirtualSize;
+	dd _codeend - codestart		 	;	uint32_t mVirtualSize;
 	dd _start - START			;	uint32_t mVirtualAddress;
-	dd _end - _start			;	uint32_t mSizeOfRawData;
+	dd _codeend - codestart			;	uint32_t mSizeOfRawData;
 	dd _start - START			;	uint32_t mPointerToRawData;
 	dd 0						;	uint32_t mPointerToRelocations;
 	dd 0						;	uint32_t mPointerToLinenumbers;
@@ -229,39 +232,111 @@ dataSectionHeader:					;struct IMAGE_SECTION_HEADER { // size 40 bytes
 	dw 0						;	uint16_t mNumberOfLinenumbers;
 	dd 0xD0000040				;	uint32_t mCharacteristics;
 								;};
-	;align 4
-	times 512-($-$$) db 0
+	align 4
+	;times 512-($-$$) db 0
 ;	times 512-($-START) db 0
 header_end:	
 	
 section .text follows=.header
+
+global _start
+
+codestart:	
+	EFI_BOOTSERVICES_ALLOCATEPOOL_OFFSET 		equ 0x40
+	EFI_BOOTSERVICES_HANDLEPROTOCOL_OFFSET 		equ 0x98
+	EFI_LOADED_IMAGE_PROTOCOL_GUID		db  0x5B, 0x1B, 0x31, 0xA1, 0x95, 0x62, 0x11, 0xd2 
+										db 0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B
+
+	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID 	db 0x96, 0x4e, 0x5b, 0x22,0x64,0x59,0x11,0xd2
+										db 0x8e,0x39,0x00,0xa0,0xc9,0x69,0x72,0x3b
+
 _start:
+entrypoint:
 ;	align 4
-	mov rcx, [rdx + 0x40] 	;SystemTable in rdx upon efi program invovation
-	mov rax, [rcx + 0x8]				;
-	mov rdx, $_ohhello
+;	mov [SystemTable], rdx
+;	mov rcx, [SystemTable]
+;	mov rcx, [rcx + 0x40]
+;	;mov rcx, qword [rdx+0x40] 	;SystemTable in rdx upon efi program invovation
+;	mov rax, rcx
+;	;mov rax, qword [rax+0x8]				;
+;	mov rax, [rax + 0x8]
+;	lea rdx, [_ohhello]
+;	sub rsp, 32
+;	call rax
+;	add rsp, 32
+;	ret
+	
+
+
+
+	mov [ImageHandle], rcx
+	mov [gST], rdx
+
+	push rbp
+	mov rsp, rbp
 	sub rsp, 32
+	lea rbx, [rdx + 0x60]
+	mov [gBS], rbx
+	
+	mov rbx, [gST]
+	mov rbx, [rbx + 0x60]
+	mov [gBS], rbx
+	mov rax, [gST]
+	mov rax, [rax + 0x40]
+	mov [ConOut], rax
+
+	mov rbx, [gBS]
+	mov rax, [rbx + 0x98]		;gBS->HandleProtocol()
+
+							; params passed in rcx, rdx, r8, r9, r10
+	mov rcx, [ImageHandle]
+	mov rdx, EFI_LOADED_IMAGE_PROTOCOL_GUID
+	lea r8, [LoadedImageProtocol]
+
 	call rax
 	add rsp, 32
-	retn
-
+	pop rbp
+	ret                       ; Get outta there
+  
 ;	_ohhello:	db __utf16__ 'oh hello there', 13, 10, 0
 ;; required 28 bytes of paddiing to conform to the f*d spec 
 ;; 28 bytes isn't even nicely aligned along a 16byte boundary so idfk
-	;align 4
+;dq 0x9090909090909090 ;; bootleg padding
+;  dq 0x909090 ;; bootleg padding
+	align 4
+	;  db 0x48, 0xBF, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x00, 0x00, 0xFF, 0xD7 ; only use if you need to crash the monitor
+cEnd:
 	;padding:
 	;	times 64-($-_start) db 90
 	;	times 272-($-mzheader) db 90
-	times 1024-($-$$) db 90
-_end:
+	;times 1024-($-$$) db 0
+_codeend:
+
+section .reloc
+;empty but needed for UEFI for some reason?
+
+
 
 ;.data
-section .data follows=.text
+section .data
+
 _datastart:
 	;_ohhello:	db __utf16__ 'oh hello there', 13, 10, 0
-	_ohhello:	db __utf16__ 'oh hello there\0'
-	times 512-($-$$) db 0
-	;align 4
+	_ohhello			db __utf16__ 'oh hello there\r\n\0'
+;	SystemTable  		dq 0
+;	BootServicesTable  	dq 0
+
+	gST 					dq 0
+	gBS 					dq 0
+	ConOut 					dq 0
+	ImageHandle 			dq 0
+	LoadedImageProtocolGuid	equ EFI_LOADED_IMAGE_PROTOCOL_GUID
+	LoadedImageProtocol		dq 0
+	DeviceHandle			dq 0
+	FilePath				dq 0
+	ImageSize 				dq 0
+
+	;times 512-($-$$) db 0
+	align 4
 _dataend:	
-
-
+end:
