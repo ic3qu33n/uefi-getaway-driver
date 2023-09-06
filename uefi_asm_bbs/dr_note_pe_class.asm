@@ -357,7 +357,8 @@ entrypoint:
 	je success_print
 	lea rcx, HostFilename
 	call print
-	jmp exit
+	jmp get_sfsp
+;	jmp exit
 	;jne exit
 
 success_print:
@@ -388,6 +389,20 @@ print:										;Print function
 	call rax
 	ret
 
+get_sfsp:
+
+	mov rbx, [gBS]
+	mov rax, [rbx + 0x98]		;gBS->HandleProtocol()
+
+							; params passed in rcx, rdx, r8, r9, r10
+	mov rcx, [ImageHandle]
+	mov rdx, EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID
+	lea r8, [SimpleFilesystemProtocol]
+	call rax
+	cmp rax, EFI_SUCCESS
+;	jne print
+	lea rcx,rootVolumeCheck
+	call print
 
 exit:
 	;add rsp, 56
@@ -432,10 +447,11 @@ _datastart:
 	DeviceHandle			dq 0
 	FilePath				dq 0
 	ImageSize 				dq 0
-	HostFilename 			db __utf16__ 'ImageOffTheHandle.efi\0'
-	HandleProtocolCheck 			db __utf16__ 'HandleProtocol call with ImageHandle successful\r\n\0'
+	HostFilename 			db __utf16__ ' ImageOffTheHandle.efi \r\n\0'
+	HandleProtocolCheck 			db __utf16__ ' HandleProtocol call with ImageHandle successful \r\n\0'
 	RootVolume				dq 0
 	SimpleFilesystemProtocol 	dq 0
+	rootVolumeCheck 		db __utf16__ 'Handle Protocol call for sfsp successful \r\n\0 '
 	;FilePath				times 36 du 0
 	;times 512-($-$$) db 0
 	align 4
