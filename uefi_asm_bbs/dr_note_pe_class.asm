@@ -244,6 +244,7 @@ relocSectionHeader:					;struct IMAGE_SECTION_HEADER { // size 40 bytes
 	dw 0						;	uint16_t mNumberOfLinenumbers;
 	dd 0x00000000				;	uint32_t mCharacteristics;
 								;};
+;	align 8
 	align 4
 	;times 512-($-$$) db 0
 ;	times 512-($-START) db 0
@@ -254,10 +255,10 @@ section .text follows=.header
 global _start
 
 codestart:
-	EFI_SUCCESS										equ 0
 	
 	EFI_BOOTSERVICES_ALLOCATEPOOL_OFFSET 			equ 0x40
 	EFI_BOOTSERVICES_HANDLEPROTOCOL_OFFSET 			equ 0x98
+	EFI_BOOTSERVICES_OPENPROTOCOL_OFFSET 			equ 0x118
 	
 	EFI_LOADED_IMAGE_PROTOCOL_DEVICEHANDLE_OFFSET 	equ 0x18
 	EFI_LOADED_IMAGE_PROTOCOL_FILEPATH_OFFSET		equ 0x20
@@ -265,11 +266,36 @@ codestart:
 
 	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_OPENVOLUME_OFFSET		equ 0x8
 	
-	EFI_LOADED_IMAGE_PROTOCOL_GUID		db  0x5B, 0x1B, 0x31, 0xA1, 0x95, 0x62, 0x11, 0xd2 
-										db 0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B
+	
 
-	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID 	db 0x96, 0x4e, 0x5b, 0x22,0x64,0x59,0x11,0xd2
-										db 0x8e,0x39,0x00,0xa0,0xc9,0x69,0x72,0x3b
+
+	EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL equ  0x00000001
+
+	%macro UINTN 0
+		RESQ 1
+		alignb 8
+	%endmacro
+
+	%macro UINT32 0
+		RESD 1
+		alignb 4
+	%endmacro
+
+	%macro UINT64 0
+		RESQ 1
+		alignb 8
+	%endmacro
+
+	%macro EFI_HANDLE 0
+		RESQ 1
+		alignb 8
+	%endmacro
+
+	%macro POINTER 0
+		RESQ 1
+		alignb 8
+	%endmacro
+
 
 ;
 ; 		 From: https://uefi.org/specs/UEFI/2.10/13_Protocols_Media_Access.html#simple-file-system-protocol
@@ -309,34 +335,13 @@ codestart:
 
 _start:
 entrypoint:
-;	align 4
-;	mov [SystemTable], rdx
-;	mov rcx, [SystemTable]
-;	mov rcx, [rcx + 0x40]
-;	;mov rcx, qword [rdx+0x40] 	;SystemTable in rdx upon efi program invovation
-;	mov rax, rcx
-;	;mov rax, qword [rax+0x8]				;
-;	mov rax, [rax + 0x8]
-;	lea rdx, [_ohhello]
-;	sub rsp, 32
-;	call rax
-;	add rsp, 32
-;	ret
-	
-
-
-
-	mov [ImageHandle], rcx
-	mov [gST], rdx
-
+	;mov [efiRSP], rsp
 	push rbp
 	mov rbp, rsp
-	sub rsp, 64
-	;sub rsp, 0x60
-	;sub rsp, 56
+	sub rsp,0xc0
 	
-	;lea rbx, [rdx + 0x60]
-	;mov [gBS], rbx
+	mov [ImageHandle], rcx
+	mov [gST], rdx
 	
 	mov rbx, [gST]
 	mov rbx, [rbx + 0x60]
@@ -346,31 +351,35 @@ entrypoint:
 	mov [ConOut], rax
 
 	mov rbx, [gBS]
-	mov rax, [rbx + 0x98]		;gBS->HandleProtocol()
-
-							; params passed in rcx, rdx, r8, r9, r10
+	mov rdi, [rbx + 0x98]		;gBS->HandleProtocol()
+	;mov rax, [rbx + 0x118]		;gBS->OpenProtocol()
+								; params passed in rcx, rdx, r8, r9, r10
 	mov rcx, [ImageHandle]
-	mov rdx, EFI_LOADED_IMAGE_PROTOCOL_GUID
+;	mov rdx, EFI_LOADED_IMAGE_PROTOCOL_GUID
+	
 	lea r8, [LoadedImageProtocol]
+	mov dword [rbp-0x40], 0x5b1b31a1
+	mov word [rbp-0x3c], 0x9562
+	mov word [rbp-0x3a], 0x11d2
+	mov rax, 0x3b7269c9a0003f8e
+	mov [rbp-0x38], rax
+	lea rdx, [rbp-0x40]
+;;	mov r9, [ImageHandle]
+;;	xor r10, r10
+;;	mov rbx, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL
+;;	push rbx
+	call rdi
+;;	pop rbx
+	mov [rbp-0x8], rax
+	cmp qword [rbp -0x8], byte 0x0
+	;cmp byte [rax], EFI_SUCCESS
+	;je success_print
+	jne printerror
 
-	call rax
-	cmp rax, EFI_SUCCESS
-	je success_print
-;	jne errormsg
-	lea rcx, HostFilename
-	call print
-	;jmp get_sfsp
-	jmp exit
-	;jne exit
 
-
-;printerror:
-;	lea rcx, errormsg
-;	call print
-;	jmp exit
 
 success_print:
-	lea rcx, HandleProtocolCheck
+	lea r13, HandleProtocolCheck
 	call print
 	
 
@@ -384,65 +393,70 @@ success_print:
 ;	lea rcx, [rbx]
 	;mov [FilePath], rbx
 	;lea rcx, FilePath	
-	lea rcx, HostFilename
-	call print
+;;	lea rcx, HostFilename
+;;	call print
+
 	jmp get_sfsp
 	;jmp exit
 
+printerror:
+	lea r13, errormsg
+	call print
+	jmp exit
+
 print:										;Print function
-	mov rdx, rcx
-	mov rcx, [gST]
-	mov rcx, [rcx + 0x40]
-	mov rax, qword [rcx+0x8]				
+;	sub rsp, 8
+	mov rdx, r13
+	mov rcx, [ConOut]
+;	mov rcx, [gST]
+;	mov rcx, [rcx + 0x40]
+	mov rax, [rcx+0x8]				
 	;lea rdx, HostFilename
 	;lea rdx, FilePath
 
 	call rax
+;	add rsp, 8
 	ret
 
 get_sfsp:
-
 	mov rbx, [gBS]
-	mov rax, [rbx + 0x98]		;gBS->HandleProtocol()
+	;mov rax, [rbx + 0x98]		;gBS->HandleProtocol()
+	mov rax, [rbx + 0x118]		;gBS->OpenProtocol()
 
 							; params passed in rcx, rdx, r8, r9, r10
-	;mov rcx, [DeviceHandle]
-	mov rcx, [ImageHandle]
-	mov rdx, EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID
-	lea r8, [SimpleFilesystemProtocol]
+	mov rcx, [DeviceHandle]
+	lea rdx, [EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID]
+	;mov r8, [SimpleFilesystemProtocol]
+	lea r8, SimpleFilesystemProtocol
+	mov r9, [ImageHandle]
+	xor r10, r10
+	mov rbx, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL
+	push rbx
 	call rax
-	cmp rax, EFI_SUCCESS
-	;jne printerror
-	jne exit
-	lea rcx, rootVolumeCheck
+	pop rbx
+	;cmp rax, EFI_SUCCESS
+	mov [rbp-0x8], rax
+	cmp qword [rbp -0x8], byte 0x0
+	jne printerror
+	;jne exit
+	lea r13, rootVolumeCheck
 	call print
 	jmp exit	
 
 	
 
 exit:
-	;add rsp, 56
-	;add rsp, 0x60
-	add rsp, 64
+	add rsp, 0xc0
 	pop rbp
-	ret                       ; Get outta there
+	ret
   
-;	_ohhello:	db __utf16__ 'oh hello there', 13, 10, 0
 ;; required 28 bytes of paddiing to conform to the f*d spec 
 ;; 28 bytes isn't even nicely aligned along a 16byte boundary so idfk
-;dq 0x9090909090909090 ;; bootleg padding
-;  dq 0x909090 ;; bootleg padding
-	align 4
-	;  db 0x48, 0xBF, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x00, 0x00, 0xFF, 0xD7 ; only use if you need to crash the monitor
+;	align 8
 cEnd:
-	;padding:
-	;	times 64-($-_start) db 90
-	;	times 272-($-mzheader) db 90
-	;times 1024-($-$$) db 0
+	times 512-($-$$) db 0
 _codeend:
 
-section .reloc
-;empty but needed for UEFI for some reason?
 
 
 
@@ -456,13 +470,29 @@ _datastart:
 	LoadedImageProtocol		dq 0
 	DeviceHandle			dq 0
 	ImageSize 				dq 0
-	HostFilename 			db __utf16__ ' ImageOffTheHandle.efi \r\n\0'
-	HandleProtocolCheck 			db __utf16__ ' HandleProtocol call with ImageHandle successful \r\n\0'
 	RootVolume				dq 0
+	efi_status				dq 0
 	SimpleFilesystemProtocol 	dq 0
-	rootVolumeCheck 		db __utf16__ 'Handle Protocol call for sfsp successful \r\n\0 '
-	errormsg				db __utf16__ ' uh ohhh EFI errorl \r\n\0 '
+	EFI_SUCCESS				dq 0
 
-	align 4
+	EFI_LOADED_IMAGE_PROTOCOL_GUID	dd 0x5b1b31a1, 
+									dw 0x9562, 0x11d2
+									db 0x8e, 0x3f, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b
+
+	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID 	dd 0x964e5b22,
+											dw 0x6459, 0x11d2
+											db 0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b
+
+	HostFilename 			db __utf16__ `ImageOffTheHandle.efi \r\n\0`
+	HandleProtocolCheck 	db __utf16__ `HandleProtocol call with ImageHandle successful \r\n\0`
+	rootVolumeCheck 		db __utf16__ `Handle Protocol call for sfsp successful \r\n\0`
+	errormsg				db __utf16__ `uh ohhh EFI error \r\n\0`
+
+	times 512-($-$$) db 0
+;	align 8
 _dataend:	
+
+section .reloc follows=.data
+;empty but needed for UEFI for some reason?
+
 end:
