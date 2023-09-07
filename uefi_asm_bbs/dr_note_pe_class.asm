@@ -245,9 +245,7 @@ relocSectionHeader:					;struct IMAGE_SECTION_HEADER { // size 40 bytes
 	dd 0x00000000				;	uint32_t mCharacteristics;
 								;};
 ;	align 8
-	align 4
-	;times 512-($-$$) db 0
-;	times 512-($-START) db 0
+	times 512-($-$$) db 0
 header_end:	
 	
 section .text follows=.header
@@ -267,35 +265,34 @@ codestart:
 	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_OPENVOLUME_OFFSET		equ 0x8
 	
 	
-
-
 	EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL equ  0x00000001
 
-	%macro UINTN 0
-		RESQ 1
-		alignb 8
-	%endmacro
-
-	%macro UINT32 0
-		RESD 1
-		alignb 4
-	%endmacro
-
-	%macro UINT64 0
-		RESQ 1
-		alignb 8
-	%endmacro
-
-	%macro EFI_HANDLE 0
-		RESQ 1
-		alignb 8
-	%endmacro
-
-	%macro POINTER 0
-		RESQ 1
-		alignb 8
-	%endmacro
-
+;/*
+;	%macro UINTN 0
+;		RESQ 1
+;		alignb 8
+;	%endmacro
+;
+;	%macro UINT32 0
+;		RESD 1
+;		alignb 4
+;	%endmacro
+;
+;	%macro UINT64 0
+;		RESQ 1
+;		alignb 8
+;	%endmacro
+;
+;	%macro EFI_HANDLE 0
+;		RESQ 1
+;		alignb 8
+;	%endmacro
+;
+;	%macro POINTER 0
+;		RESQ 1
+;		alignb 8
+;	%endmacro
+;*/
 
 ;
 ; 		 From: https://uefi.org/specs/UEFI/2.10/13_Protocols_Media_Access.html#simple-file-system-protocol
@@ -364,12 +361,12 @@ entrypoint:
 	mov rax, 0x3b7269c9a0003f8e
 	mov [rbp-0x38], rax
 	lea rdx, [rbp-0x40]
-;;	mov r9, [ImageHandle]
-;;	xor r10, r10
-;;	mov rbx, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL
-;;	push rbx
+	mov r9, [ImageHandle]
+	xor r10, r10
+	mov rbx, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL
+	push rbx
 	call rdi
-;;	pop rbx
+	pop rbx
 	mov [rbp-0x8], rax
 	cmp qword [rbp -0x8], byte 0x0
 	;cmp byte [rax], EFI_SUCCESS
@@ -421,15 +418,27 @@ print:										;Print function
 get_sfsp:
 	mov rbx, [gBS]
 	;mov rax, [rbx + 0x98]		;gBS->HandleProtocol()
-	mov rax, [rbx + 0x118]		;gBS->OpenProtocol()
+	;mov rax, [rbx + 0x118]		;gBS->OpenProtocol()
 
 							; params passed in rcx, rdx, r8, r9, r10
 	mov rcx, [DeviceHandle]
-	lea rdx, [EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID]
+
+	;lea rdx, [EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID]
+	
+	mov dword [rbp-0x60],0x964e5b22,
+	mov word [rbp-0x5c], 0x6459,
+	mov word [rbp-0x5a], 0x11d2
+	mov rax, 0x3b7269c9a000398e
+	mov [rbp-0x58], rax
+	lea rdx, [rbp-0x60]
+
 	;mov r8, [SimpleFilesystemProtocol]
-	lea r8, SimpleFilesystemProtocol
+	lea r8, [SimpleFilesystemProtocol]
 	mov r9, [ImageHandle]
 	xor r10, r10
+	;mov rax, [rbx + 0x118]		;gBS->OpenProtocol()
+	mov rax, [rbx + 0x98]		;gBS->HandleProtocol()
+
 	mov rbx, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL
 	push rbx
 	call rax
