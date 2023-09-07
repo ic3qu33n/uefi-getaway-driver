@@ -267,7 +267,11 @@ codestart:
 	EFI_LOADED_IMAGE_PROTOCOL_IMAGESIZE_OFFSET		equ 0x48
 
 	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_OPENVOLUME_OFFSET		equ 0x8
-	
+
+	EFI_FILE_PROTOCOL_OPEN_FILE_OFFSET				equ 0x8	
+	EFI_FILE_PROTOCOL_CLOSE_FILE_OFFSET				equ 0x10	
+	EFI_FILE_PROTOCOL_READ_FILE_OFFSET				equ 0x20
+	EFI_FILE_PROTOCOL_WRITE_FILE_OFFSET				equ 0x28
 	
 	EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL equ  0x00000001
 
@@ -432,6 +436,43 @@ get_sfsp:
 	jne printerror
 	lea r13, rootVolumeCheck
 	call print
+
+get_root_volume:
+	mov rax, [SimpleFilesystemProtocol]
+	mov rax, [rax + EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_OPENVOLUME_OFFSET]
+	mov rcx, [SimpleFilesystemProtocol]	
+	lea rdx, [root_volume]
+	call rax
+	mov [rbp-0x8], rax					;can probably move these 3 lines to a separate func
+	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
+	jne printerror						;after return from each of these called functions
+
+	lea r13, getrootvolumecheck			;I'd say same with these two lines, but the printing checks
+	call print							;are just for debugging purposes during dev
+
+
+open_hostfile:
+	mov rax, [root_volume]
+	mov rax, [rax + EFI_FILE_PROTOCOL_OPEN_FILE_OFFSET]
+	mov rcx, [root_volume]	
+	lea rdx, [hostfile]
+	lea r8, hostfilename
+	mov r9, [fileopen_mode] 
+	mov r10, [hostattributes]
+	sub rsp, 8							;realign stack on 16byte boundary
+	call rax
+	add rsp, 8
+	mov [rbp-0x8], rax					;can probably move these 3 lines to a separate func
+	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
+	jne printerror						;after return from each of these called functions
+
+	lea r13, openhostfilecheck			;I'd say same with these two lines, but the printing checks
+	call print							;are just for debugging purposes during dev
+
+
+;read_hostfile:
+
+
 	jmp exit	
 
 	
@@ -461,9 +502,15 @@ _datastart:
 	LoadedImageProtocol		dq 0
 	DeviceHandle			dq 0
 	ImageSize 				dq 0
-	RootVolume				dq 0
+	root_volume				dq 0
 	efi_status				dq 0
 	SimpleFilesystemProtocol 	dq 0
+	hostfile				dq 0
+	targetfile				dq 0
+	hostattributes			dq 0x0
+	fileopen_mode			dq 0x1
+	temp_buffer				dq 0
+
 	EFI_SUCCESS				dq 0
 
 	EFI_LOADED_IMAGE_PROTOCOL_GUID	dd 0x5b1b31a1, 
@@ -474,12 +521,14 @@ _datastart:
 											dw 0x6459, 0x11d2
 											db 0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b
 
-	HostFilename 			db __utf16__ `self-rep-golf.efi \r\n\0`
+	hostfilename 			db __utf16__ `\\self-rep-golf.efi\0`
 	HandleProtocolCheck 	db __utf16__ `HandleProtocol call with ImageHandle successful \r\n\0`
 	rootVolumeCheck 		db __utf16__ `Handle Protocol call for sfsp successful \r\n\0`
+	getrootvolumecheck		db __utf16__ `get root volume with OpenVolume call successful\r\n\0` 
+	openhostfilecheck		db __utf16__ `open hostfile with FILE_PROTOCOL Open call successful\r\n\0` 
 	errormsg				db __utf16__ `uh ohhh EFI error \r\n\0`
 
-	times 512-($-$$) db 0
+	;times 512-($-$$) db 0
 _dataend:	
 
 section .reloc follows=.data
