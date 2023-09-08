@@ -580,6 +580,23 @@ read_hostfile:
 	call print							;are just for debugging purposes during dev
 
 
+write_targetfile:
+	mov rax, [targetfile]
+	mov rax, [rax + EFI_FILE_PROTOCOL_WRITE_FILE_OFFSET]
+	mov rcx, [targetfile]
+	lea rdx, [ImageSize]
+	mov r8, [temp_buffer]
+
+	call rax
+	mov [rbp-0x8], rax					;can probably move these 3 lines to a separate func
+	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
+	jne printerror						;after return from each of these called functions
+
+	lea r13, writetargetfilecheck			;I'd say same with these two lines, but the printing checks
+	call print							;are just for debugging purposes during dev
+
+
+
 	jmp baibai
 	;jmp exit
 
@@ -604,6 +621,9 @@ close_file:
 	
 
 free_tmp_buffer:
+	mov r13, [targetfile]
+	call close_file
+
 	mov rbx, [gBS]
 	mov rax, [rbx + EFI_BOOTSERVICES_FREEPOOL_OFFSET]
 	mov rcx, [temp_buffer]
@@ -613,7 +633,7 @@ free_tmp_buffer:
 	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
 	jne printerror						;after return from each of these called functions
 
-	lea r13, openhostfilecheck			;I'd say same with these two lines, but the printing checks
+	lea r13, freepoolcheck			;I'd say same with these two lines, but the printing checks
 	call print							;are just for debugging purposes during dev
 	
 	mov r13, [hostfile]
