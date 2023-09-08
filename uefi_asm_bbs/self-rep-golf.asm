@@ -259,6 +259,7 @@ global _start
 codestart:
 	
 	EFI_BOOTSERVICES_ALLOCATEPOOL_OFFSET 			equ 0x40
+	EFI_BOOTSERVICES_FREEPOOL_OFFSET 				equ 0x48
 	EFI_BOOTSERVICES_HANDLEPROTOCOL_OFFSET 			equ 0x98
 	EFI_BOOTSERVICES_OPENPROTOCOL_OFFSET 			equ 0x118
 
@@ -503,9 +504,9 @@ open_hostfile:
 	lea r8, hostfilename
 	mov r9, [fileopen_mode] 
 	mov r10, [hostattributes]
-	sub rsp, 8							;realign stack on 16byte boundary
+;	sub rsp, 8							;realign stack on 16byte boundary
 	call rax
-	add rsp, 8
+;	add rsp, 8
 	mov [rbp-0x8], rax					;can probably move these 3 lines to a separate func
 	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
 	jne printerror						;after return from each of these called functions
@@ -514,9 +515,44 @@ open_hostfile:
 	call print							;are just for debugging purposes during dev
 
 
+										;obv this is the same code as above w mods just for vars
+open_targetfile:						;can/should be updated so that this function is abstracted 
+	mov rax, [root_volume]				;to remove redundant code and minimize code size
+	mov rax, [rax + EFI_FILE_PROTOCOL_OPEN_FILE_OFFSET]
+	mov rcx, [root_volume]	
+	mov qword [rbp - 0x78], 0x0
+	lea rdx, [rbp-0x78]
+	;mov rbx, [targetfile]
+	;lea rdx, [targetfile]
+	;lea rdx, [rbx]
+	lea r8, targetfilename
+	;mov r9, [targetfile_mode] 
+	mov r9, 0x8000000000000003
+	;mov qword r10, 0x0
+	mov qword [rsp+0x20], 0x0
+	;mov r10, [hostattributes]
+;	sub rsp, 8							;realign stack on 16byte boundary
+	call rax
+;	add rsp, 8
+	mov [rbp-0x8], rax					;can probably move these 3 lines to a separate func
+	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
+	jne printerror						;after return from each of these called functions
+
+	lea r13, opentargetfilecheck		;I'd say same with these two lines, but the printing checks
+	call print							;are just for debugging purposes during dev
+	
+	mov rax, [rbp-0x78]
+	mov [targetfile], rax
+
+
+
+
+
+
+
 allocate_tmp_buffer:
-	mov rbx, [gBS]
-	mov rax, [rbx + EFI_BOOTSERVICES_ALLOCATEPOOL_OFFSET]
+	mov rax, [gBS]
+	mov rax, [rax + EFI_BOOTSERVICES_ALLOCATEPOOL_OFFSET]
 	mov rcx, [EFI_ALLOCATEPOOL_ALLOCATEANYPAGES]
 	mov rdx, [ImageSize]
 	lea r8, [temp_buffer]
@@ -529,7 +565,7 @@ allocate_tmp_buffer:
 	call print							;are just for debugging purposes during dev
 
 read_hostfile:
-	mov rax, [root_volume]
+	mov rax, [hostfile]
 	mov rax, [rax + EFI_FILE_PROTOCOL_READ_FILE_OFFSET]
 	mov rcx, [hostfile]
 	lea rdx, [ImageSize]
@@ -542,31 +578,51 @@ read_hostfile:
 
 	lea r13, readhostfilecheck			;I'd say same with these two lines, but the printing checks
 	call print							;are just for debugging purposes during dev
-	jmp exit	
 
 
+	jmp baibai
+	;jmp exit
 
-;open_targetfile:						;obv this is the same code as above w mods just for vars
-;										;can/should be updated so that this function is abstracted 
-;	mov rax, [root_volume]				;to remove redundant code and minimize code size
-;	mov rax, [rax + EFI_FILE_PROTOCOL_OPEN_FILE_OFFSET]
-;	mov rcx, [root_volume]	
-;	lea rdx, [targetfile]
-;	lea r8, targetfilename
-;	mov r9, [fileopen_mode] 
-;	mov r10, [hostattributes]
-;	sub rsp, 8							;realign stack on 16byte boundary
-;	call rax
-;	add rsp, 8
-;	mov [rbp-0x8], rax					;can probably move these 3 lines to a separate func
-;	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
-;	jne printerror						;after return from each of these called functions
-;
-;	lea r13, openhostfilecheck			;I'd say same with these two lines, but the printing checks
-;	call print							;are just for debugging purposes during dev
+baibai:
+	jmp free_tmp_buffer	
 
+close_file:
+	mov rax, r13
+	;mov rax, [hostfile]
+	mov rax, [rax + EFI_FILE_PROTOCOL_CLOSE_FILE_OFFSET]
+	;mov rcx, [hostfile]	
+	mov rcx, r13
+	call rax
+	mov [rbp-0x8], rax					;can probably move these 3 lines to a separate func
+	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
+	jne printerror						;after return from each of these called functions
+
+	lea r13, closefilecheck				;I'd say same with these two lines, but the printing checks
+	call print							;are just for debugging purposes during dev
+	ret
 
 	
+
+free_tmp_buffer:
+	mov rbx, [gBS]
+	mov rax, [rbx + EFI_BOOTSERVICES_FREEPOOL_OFFSET]
+	mov rcx, [temp_buffer]
+
+	call rax
+	mov [rbp-0x8], rax					;can probably move these 3 lines to a separate func
+	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
+	jne printerror						;after return from each of these called functions
+
+	lea r13, openhostfilecheck			;I'd say same with these two lines, but the printing checks
+	call print							;are just for debugging purposes during dev
+	
+	mov r13, [hostfile]
+	call close_file
+	
+	xor r13, r13
+	mov r13, [root_volume]
+	call close_file
+
 
 exit:
 	add rsp, 0xc0
@@ -594,16 +650,17 @@ _datastart:
 	DeviceHandle			dq 0
 	ImageSize 				dq 0
 	root_volume				dq 0
-	efi_status				dq 0
+;	efi_status				dq 0
 	SimpleFilesystemProtocol 	dq 0
 	hostfile				dq 0
 	targetfile				dq 0
 	hostattributes			dq 0x0
 	fileopen_mode			dq 0x1
+	targetfile_mode			dq 0x8000000000000003
 	temp_buffer				dq 0
 
 	EFI_SUCCESS				dq 0
-	EFI_ALLOCATEPOOL_ALLOCATEANYPAGES	dq 0	
+	EFI_ALLOCATEPOOL_ALLOCATEANYPAGES	dq 0
 
 	EFI_LOADED_IMAGE_PROTOCOL_GUID	dd 0x5b1b31a1, 
 									dw 0x9562, 0x11d2
@@ -614,14 +671,20 @@ _datastart:
 											db 0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b
 
 	hostfilename 			db __utf16__ `\\self-rep-golf.efi\0`
+	targetfilename 			db __utf16__ `4.efi\0`
+	
+	
+;All the debug print strings 
 	HandleProtocolCheck 	db __utf16__ `HandleProtocol call with ImageHandle successful \r\n\0`
 	rootVolumeCheck 		db __utf16__ `Handle Protocol call for sfsp successful \r\n\0`
 	getrootvolumecheck		db __utf16__ `get root volume with OpenVolume call successful\r\n\0` 
 	openhostfilecheck		db __utf16__ `open hostfile with FILE_PROTOCOL Open call successful\r\n\0` 
 	allocatepoolcheck		db __utf16__ `allocation for temp_buffer with gBS AllocatePool call successful\r\n\0` 
+	freepoolcheck			db __utf16__ `free temp_buffer with gBS FreePool call successful\r\n\0` 
 	readhostfilecheck		db __utf16__ `read hostfile with FILE_PROTOCOL Read call successful\r\n\0` 
 	opentargetfilecheck		db __utf16__ `open targetfile with FILE_PROTOCOL Open call successful\r\n\0` 
 	writetargetfilecheck	db __utf16__ `write targetfile with FILE_PROTOCOL Write call successful\r\n\0` 
+	closefilecheck			db __utf16__ `close file with FILE_PROTOCOL Write call successful\r\n\0` 
 	errormsg				db __utf16__ `uh ohhh EFI error \r\n\0`
 
 	;times 512-($-$$) db 0
