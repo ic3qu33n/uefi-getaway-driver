@@ -261,6 +261,7 @@ codestart:
 	EFI_BOOTSERVICES_ALLOCATEPOOL_OFFSET 			equ 0x40
 	EFI_BOOTSERVICES_HANDLEPROTOCOL_OFFSET 			equ 0x98
 	EFI_BOOTSERVICES_OPENPROTOCOL_OFFSET 			equ 0x118
+
 	
 	EFI_LOADED_IMAGE_PROTOCOL_DEVICEHANDLE_OFFSET 	equ 0x18
 	EFI_LOADED_IMAGE_PROTOCOL_FILEPATH_OFFSET		equ 0x20
@@ -335,7 +336,50 @@ codestart:
 ;		   EFI_FILE_WRITE_EX               WriteEx; // Added for revision 2
 ;		   EFI_FILE_FLUSH_EX               FlushEx; // Added for revision 2
 ;		 } EFI_FILE_PROTOCOL;
-
+;
+;		EFI_ALLOCATE_TYPE definitions for Boot Services->AllocatePool() call
+;		from Chapter 7 of UEFI spec: 
+;		https://uefi.org/specs/UEFI/2.10/07_Services_Boot_Services.html#efi-boot-services-allocatepages
+;
+;		 //******************************************************
+;		 //EFI_ALLOCATE_TYPE
+;		 //******************************************************
+;		 // These types are discussed in the "Description" section below.
+;		 typedef enum {
+;			AllocateAnyPages,
+;			AllocateMaxAddress,
+;			AllocateAddress,
+;			MaxAllocateType
+;		 } EFI_ALLOCATE_TYPE;
+;		 
+;		 //******************************************************
+;		 //EFI_MEMORY_TYPE
+;		 //******************************************************
+;		 // These type values are discussed in Memory Type Usage before ExitBootServices()  and  Memory Type Usage after ExitBootServices().
+;		 typedef enum {
+;			EfiReservedMemoryType,
+;			EfiLoaderCode,
+;			EfiLoaderData,
+;			EfiBootServicesCode,
+;			EfiBootServicesData,
+;			EfiRuntimeServicesCode,
+;			EfiRuntimeServicesData,
+;			EfiConventionalMemory,
+;			EfiUnusableMemory,
+;			EfiACPIReclaimMemory,
+;			EfiACPIMemoryNVS,
+;			EfiMemoryMappedIO,
+;			EfiMemoryMappedIOPortSpace,
+;			EfiPalCode,
+;			EfiPersistentMemory,
+;			EfiUnacceptedMemoryType,
+;			EfiMaxMemoryType
+;		 } EFI_MEMORY_TYPE;
+;		 
+;		 //******************************************************
+;		 //EFI_PHYSICAL_ADDRESS
+;		 //******************************************************
+;		 typedef UINT64 EFI_PHYSICAL_ADDRESS;
 
 
 _start:
@@ -470,10 +514,57 @@ open_hostfile:
 	call print							;are just for debugging purposes during dev
 
 
-;read_hostfile:
+allocate_tmp_buffer:
+	mov rbx, [gBS]
+	mov rax, [rbx + EFI_BOOTSERVICES_ALLOCATEPOOL_OFFSET]
+	mov rcx, [EFI_ALLOCATEPOOL_ALLOCATEANYPAGES]
+	mov rdx, [ImageSize]
+	lea r8, [temp_buffer]
+	call rax
+	mov [rbp-0x8], rax					;can probably move these 3 lines to a separate func
+	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
+	jne printerror						;after return from each of these called functions
 
+	lea r13, allocatepoolcheck			;I'd say same with these two lines, but the printing checks
+	call print							;are just for debugging purposes during dev
 
+read_hostfile:
+	mov rax, [root_volume]
+	mov rax, [rax + EFI_FILE_PROTOCOL_READ_FILE_OFFSET]
+	mov rcx, [hostfile]
+	lea rdx, [ImageSize]
+	mov r8, [temp_buffer]
+	
+	call rax
+	mov [rbp-0x8], rax					;can probably move these 3 lines to a separate func
+	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
+	jne printerror						;after return from each of these called functions
+
+	lea r13, readhostfilecheck			;I'd say same with these two lines, but the printing checks
+	call print							;are just for debugging purposes during dev
 	jmp exit	
+
+
+
+;open_targetfile:						;obv this is the same code as above w mods just for vars
+;										;can/should be updated so that this function is abstracted 
+;	mov rax, [root_volume]				;to remove redundant code and minimize code size
+;	mov rax, [rax + EFI_FILE_PROTOCOL_OPEN_FILE_OFFSET]
+;	mov rcx, [root_volume]	
+;	lea rdx, [targetfile]
+;	lea r8, targetfilename
+;	mov r9, [fileopen_mode] 
+;	mov r10, [hostattributes]
+;	sub rsp, 8							;realign stack on 16byte boundary
+;	call rax
+;	add rsp, 8
+;	mov [rbp-0x8], rax					;can probably move these 3 lines to a separate func
+;	cmp qword [rbp -0x8], byte 0x0		;error_check or something, since it's the same pattern
+;	jne printerror						;after return from each of these called functions
+;
+;	lea r13, openhostfilecheck			;I'd say same with these two lines, but the printing checks
+;	call print							;are just for debugging purposes during dev
+
 
 	
 
@@ -486,7 +577,7 @@ exit:
 ;; 28 bytes isn't even nicely aligned along a 16byte boundary so idfk
 ;	align 8
 cEnd:
-	times 512-($-$$) db 0
+	;times 512-($-$$) db 0
 _codeend:
 
 
@@ -512,6 +603,7 @@ _datastart:
 	temp_buffer				dq 0
 
 	EFI_SUCCESS				dq 0
+	EFI_ALLOCATEPOOL_ALLOCATEANYPAGES	dq 0	
 
 	EFI_LOADED_IMAGE_PROTOCOL_GUID	dd 0x5b1b31a1, 
 									dw 0x9562, 0x11d2
@@ -526,6 +618,10 @@ _datastart:
 	rootVolumeCheck 		db __utf16__ `Handle Protocol call for sfsp successful \r\n\0`
 	getrootvolumecheck		db __utf16__ `get root volume with OpenVolume call successful\r\n\0` 
 	openhostfilecheck		db __utf16__ `open hostfile with FILE_PROTOCOL Open call successful\r\n\0` 
+	allocatepoolcheck		db __utf16__ `allocation for temp_buffer with gBS AllocatePool call successful\r\n\0` 
+	readhostfilecheck		db __utf16__ `read hostfile with FILE_PROTOCOL Read call successful\r\n\0` 
+	opentargetfilecheck		db __utf16__ `open targetfile with FILE_PROTOCOL Open call successful\r\n\0` 
+	writetargetfilecheck	db __utf16__ `write targetfile with FILE_PROTOCOL Write call successful\r\n\0` 
 	errormsg				db __utf16__ `uh ohhh EFI error \r\n\0`
 
 	;times 512-($-$$) db 0
