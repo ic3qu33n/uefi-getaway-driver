@@ -1,0 +1,32 @@
+[Defines]
+	INF_VERSION						= 1.25
+	BASE_NAME						= GOPComplex
+	FILE_GUID						= 228C49FD-B68E-45EC-B155-9658996F9466
+	MODULE_TYPE						= DXE_DRIVER
+	VERSION_STRING					= 1.0
+	ENTRY_POINT						= GOPComplexEntryPoint
+	UNLOAD_IMAGE					= GOPComplexUnload
+
+[Sources]
+	GOPComplex.c
+
+[Packages]
+	MdePkg/MdePkg.dec
+	MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+	UefiLib
+	UefiDriverEntryPoint
+    UefiBootServicesTableLib
+    UefiRuntimeServicesTableLib
+    BaseMemoryLib
+    DebugLib
+    PrintLib
+
+[Protocols]
+  gEfiGraphicsOutputProtocolGuid   
+  gEfiSimpleTextInputExProtocolGuid 
+
+[Depex]
+  gEfiGraphicsOutputProtocolGuid AND
+  gEfiSimpleTextInputExProtocolGuid 

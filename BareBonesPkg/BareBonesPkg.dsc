@@ -12,6 +12,8 @@
 	BareBonesPkg/BareBonesApp/BareBonesApp.inf
 	BareBonesPkg/ImageOffTheHandle/ImageOffTheHandle.inf
 	BareBonesPkg/UEFISelfRep/UEFISelfRep.inf
+	BareBonesPkg/SelfRep4/SelfRep4.inf
+	BareBonesPkg/GOPComplex/GOPComplex.inf
 
 
 [LibraryClasses]
@@ -28,6 +30,7 @@
 	MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
 	DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
 	UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
+	UefiDriverEntryPoint|MdePkg/Library/UefiDriverEntryPoint/UefiDriverEntryPoint.inf
 
 [BuildOptions]
 	GCC:*_*_*_CC_FLAGS   = -O0
