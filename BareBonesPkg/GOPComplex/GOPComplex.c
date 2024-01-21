@@ -393,15 +393,18 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 		Print(L"EFI BootServices OpenProtocol call with gop was successful: %p \n", &gop);
 		UINT64 size_info;
 	 	EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *gop_info;
-	  	//EFI_PHYSICAL_ADDRESS FrameBufferBase;
-	  	//UINTN FrameBufferSize;
+	  	EFI_PHYSICAL_ADDRESS framebuffer_base;
+	  	UINTN framebuffer_size;
 		status = gop->QueryMode(gop, gop->Mode->Mode, &size_info, &gop_info);
 		if (status== EFI_NOT_STARTED){
 			status = gop->SetMode(gop, 0);
 		} else {
 			UINT32 gop_curr_mode=gop->Mode->Mode;
 			UINT32 gop_num_modes=gop->Mode->MaxMode;
+			framebuffer_base = gop->Mode->FrameBufferBase;
+			framebuffer_size = gop->Mode->FrameBufferSize;
 			Print(L"EFI_GOP Current Mode %d: \n GOP Num Modes: %d\n\n", &gop_curr_mode, &gop_num_modes);
+			Print(L"EFI_GOP Framebuffer base %d: \n Framebuffer Size: %d\n\n", &framebuffer_base, &framebuffer_size);
 	 		UINT32 horiz_rez; 
 	 		UINT32 vert_rez; 
 	 		EFI_GRAPHICS_PIXEL_FORMAT pixelformat;
@@ -411,13 +414,176 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 				vert_rez=gop_info->VerticalResolution;
 				pixelformat=gop_info->PixelFormat;
 				Print(L"EFI_GOP Mode %d: \n Vertical Resolution: %d \n Horizontal Resolution: %d \nPixel format: %s \n\n", &horiz_rez, &vert_rez, &pixelformat);
-			}	
+			}
+	
+			EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *sfsp;
+			EFI_GUID sfsp_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
+			EFI_HANDLE devicehandle = loadedimageprotocol->DeviceHandle;
+			//EFI_GUID e_lidpp_guid= EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL_GUID;
+			/*
+			status = gBS->HandleProtocol(
+				ImageHandle,
+				&e_lidpp_guid,
+				(void **) &devicepath
+			);
+
+			status = gBS->HandleProtocol(
+				devicehandle,
+				&sfsp_guid,
+				(void **) &sfsp
+			);
+			*/
+		
+			status= gBS->OpenProtocol(
+				devicehandle,
+				&sfsp_guid,
+				(void**)&sfsp,
+				ImageHandle,
+				NULL,
+				EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+			if (status == EFI_SUCCESS) {
+				Print(L"EFI BootServices OpenProtocol call with simplefilesystemprotocol was successful: %p \n", &loadedimageprotocol);
+				Print(L"EFI_SIMPLE_FILE_SYSTEM_PROTOCOL pointer  address is: %p \n\n", &sfsp);	
+			}
+			EFI_FILE_PROTOCOL *rootvolume;
+			status = sfsp->OpenVolume(sfsp, &rootvolume);
+			
+			Print(L"EFI_SIMPLE_FILE_SYSTEM_PROTOCOL OpenVolume() func address is: %p \n\n", &(sfsp->OpenVolume));	
+			Print(L"EFI_FILE_PROTOCOL rootVolume pointer  address is: %p \n\n", &rootvolume);	
+			/*
+			*	
+			*	 Now copy this file to new target file with Open, Write and Close sequence
+			*	 of functions (protocols) available to EFI_FILE_PROTOCOL
+			*
+			*	host (source) file:	
+			*	open() -> read() -> close()
+			*
+			*	target (destination) file:	
+			*	open() -> write() -> close()
+			*
+			*
+			*	 typedef
+			*	 EFI_STATUS
+			*	 (EFIAPI *EFI_FILE_OPEN) (
+			*	   IN EFI_FILE_PROTOCOL                  *This,
+			*	   OUT EFI_FILE_PROTOCOL                 **NewHandle,
+			*	   IN CHAR16                             *FileName,
+			*	   IN UINT64                             OpenMode,
+			*	   IN UINT64                             Attributes
+			*	   );
+			*	 
+			*	
+			*	 typedef
+			*	 EFI_STATUS
+			*	 (EFIAPI *EFI_FILE_WRITE) (
+			*	   IN EFI_FILE_PROTOCOL              *This,
+			*	   IN OUT UINTN                      *BufferSize,
+			*	   IN VOID                           *Buffer
+			*	   );
+			*	 
+			*	 typedef
+			*	 EFI_STATUS
+			*	 (EFIAPI *EFI_FILE_READ) (
+			*	   IN EFI_FILE_PROTOCOL           *This,
+			*	   IN OUT UINTN                   *BufferSize,
+			*	   OUT VOID                       *Buffer
+			*	   );
+			*	
+			*	 Close():
+			*	 typedef
+			*	 EFI_STATUS
+			*	 (EFIAPI *EFI_FILE_CLOSE) (
+			*	   IN EFI_FILE_PROTOCOL                     *This
+			*	   );
+			*	
+			*/
+			
+			if (status == EFI_SUCCESS) {
+				EFI_FILE_PROTOCOL *hostfile = NULL;
+				EFI_FILE_PROTOCOL *targetfile = NULL;
+				UINT64 host_attribs = 0x0000000000000000;
+				EFI_FILE_INFO bmp_file_info;
+				EFI_GUID file_info_guid = EFI_FILE_INFO_ID;
+				UINTN bmpfileinfo_size = sizeof(bmp_file_info);
+				//SIZE_OF_EFI_FILE_INFO; 
+				//set buffer size (destination file img_size) == original img_size	
+				//UINTN newfile_buffersize =(UINTN) img_size;
+				UINTN newfile_buffersize;
+				VOID *temp_buf;
+				EFI_FILE_OPEN *open_func=&(rootvolume->Open);
+				Print(L"EFI_FILE_OPEN Open() function pointer  address is: %p \n\n", &open_func);
+				status = rootvolume->Open(rootvolume, &hostfile, L"\\skull2.bmp",0x0000000000000001, host_attribs);
+				if (status == EFI_SUCCESS){
+					Print(L"open root volume successful\n\n!");
+					
+					status=hostfile->GetInfo(hostfile, &file_info_guid, &bmpfileinfo_size, NULL);
+					if (status == EFI_BUFFER_TOO_SMALL){
+						status = gBS->AllocatePool(
+							AllocateAnyPages,
+							bmpfileinfo_size,
+							(void**)&bmp_file_info); 
+					}
+					status=hostfile->GetInfo(hostfile, &file_info_guid, &bmpfileinfo_size, (void*)&bmp_file_info);
+					if (status == EFI_SUCCESS){
+						Print(L"get info for BMP file successful!\n\n");
+						//UINT64 bmpsize = bmpfileinfo->Size;
+						UINT64 bmpfilesize = bmp_file_info.FileSize;
+						CHAR16 *bmpfilename = bmp_file_info.FileName;
+						Print(L"Name of BMP file: %s \n Physical size of BMP file: %llu \n", &bmpfilename, &bmpfilesize); 
+					
+						newfile_buffersize=(UINTN) bmpfilesize;
+					
+						status = gBS->AllocatePool(
+							AllocateAnyPages,
+							newfile_buffersize,
+							(void**)&temp_buf); 
+						
+						if (status==EFI_SUCCESS){
+							Print(L"allocate pool for file read successful!\n\n");
+						}
+						//status=hostfile->GetInfo(hostfile, &file_info_guid, &bmpfileinfo_size, NULL);
+						status=hostfile->Read(hostfile, &newfile_buffersize, temp_buf);
+						if (status == EFI_SUCCESS){
+							Print(L"file read with UEFISelfRep.efi successful! \n\n");
+						}
+					}
+					/*
+					status  = rootvolume->Open(rootvolume, &targetfile, L"\\4.efi", EFI_FILE_MODE_READ |  EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
+					if (EFI_ERROR(status)){
+						Print(L"error with create file call... \n\n");
+					} else if (status == EFI_SUCCESS){
+						Print(L"yay create file call was successful!!\n\n");
+					}
+					status=targetfile->Write(targetfile, &newfile_buffersize, temp_buf);
+					if (EFI_ERROR(status)){
+						Print(L"error with writing new file... \n\n");
+					} else if (status == EFI_SUCCESS){
+						Print(L"yay write file call was successful!!\n\n");
+					}*/
+					status=targetfile->Close(targetfile);
+					if (EFI_ERROR(status)){
+						Print(L"error with close file call... \n\n");
+					};
+					//Print the first 256 chars from our input file to stdout as a check 				
+					for (UINTN i=0; i < 0x100; i++){
+						Print(L"%c", ((CHAR8 *)temp_buf)[i]);
+					};
+					//Print(L"Filename current UEFI app executable image: %s\n", ConvertDevicePathToText(devicefilepath ,FALSE,TRUE));
+					gBS->FreePool(temp_buf);
+					status=hostfile->Close(hostfile);
+					rootvolume->Close(rootvolume);
+				} else {
+					Print(L" hmm open root volum unsuccessful... something got effed.");
+				}
+			
+			} else {
+				Print(L" hmm something got effed.");
+			}
 		}
-	} else {
-		Print(L" hmm something got effed.");
-	}
-	return status;
+	}	
+	return status;		
 }
+
 
 EFI_STATUS
 EFIAPI
@@ -430,158 +596,3 @@ GOPComplexUnload (
 }
 
 
-		//EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *sfsp;
-		//EFI_GUID sfsp_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
-		
-/*		EFI_GUID e_lidpp_guid= EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL_GUID;
-
-		status = gBS->HandleProtocol(
-			ImageHandle,
-			&e_lidpp_guid,
-			(void **) &devicepath
-		);
-
-		status = gBS->HandleProtocol(
-			devicehandle,
-			&sfsp_guid,
-			(void **) &sfsp
-		);
-
-		Print(L"EFI_SIMPLE_FILE_SYSTEM_PROTOCOL pointer  address is: %p \n\n", &sfsp);	
-		Print(L"EFI_DEVICE_PATH_PROTOCOL pointer  address is: %p \n\n", &devicepath);	
-	
-		status= gBS->OpenProtocol(
-			devicehandle,
-			&sfsp_guid,
-			(void**)&sfsp,
-			ImageHandle,
-			NULL,
-			EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
-		if (status == EFI_SUCCESS) {
-			Print(L"EFI BootServices OpenProtocol call with simplefilesystemprotocol was successful: %p \n", &loadedimageprotocol);
-		}
-		EFI_FILE_PROTOCOL *rootvolume;
-		status = sfsp->OpenVolume(sfsp, &rootvolume);
-		
-		Print(L"EFI_SIMPLE_FILE_SYSTEM_PROTOCOL OpenVolume() func address is: %p \n\n", &(sfsp->OpenVolume));	
-		Print(L"EFI_FILE_PROTOCOL rootVolume pointer  address is: %p \n\n", &rootvolume);	
-*/
-		/*
-		*	
-		*	 Now copy this file to new target file with Open, Write and Close sequence
-		*	 of functions (protocols) available to EFI_FILE_PROTOCOL
-		*
-		*	host (source) file:	
-		*	open() -> read() -> close()
-		*
-		*	target (destination) file:	
-		*	open() -> write() -> close()
-		*
-		*
-		*	 typedef
-		*	 EFI_STATUS
-		*	 (EFIAPI *EFI_FILE_OPEN) (
-		*	   IN EFI_FILE_PROTOCOL                  *This,
-		*	   OUT EFI_FILE_PROTOCOL                 **NewHandle,
-		*	   IN CHAR16                             *FileName,
-		*	   IN UINT64                             OpenMode,
-		*	   IN UINT64                             Attributes
-		*	   );
-		*	 
-		*	
-		*	 typedef
-		*	 EFI_STATUS
-		*	 (EFIAPI *EFI_FILE_WRITE) (
-		*	   IN EFI_FILE_PROTOCOL              *This,
-		*	   IN OUT UINTN                      *BufferSize,
-		*	   IN VOID                           *Buffer
-		*	   );
-		*	 
-		*	 typedef
-		*	 EFI_STATUS
-		*	 (EFIAPI *EFI_FILE_READ) (
-		*	   IN EFI_FILE_PROTOCOL           *This,
-		*	   IN OUT UINTN                   *BufferSize,
-		*	   OUT VOID                       *Buffer
-		*	   );
-		*	
-		*	 Close():
-		*	 typedef
-		*	 EFI_STATUS
-		*	 (EFIAPI *EFI_FILE_CLOSE) (
-		*	   IN EFI_FILE_PROTOCOL                     *This
-		*	   );
-		*	
-		*/
-		/*
-		if (status == EFI_SUCCESS) {
-			EFI_FILE_PROTOCOL *hostfile = NULL;
-			EFI_FILE_PROTOCOL *targetfile = NULL;
-			UINT64 host_attribs = 0x0000000000000000;
-			
-			//set buffer size (destination file img_size) == original img_size	
-			UINTN newfile_buffersize =(UINTN) img_size;
-			VOID *temp_buf;
-
-			EFI_FILE_OPEN *open_func=&(rootvolume->Open);
-			Print(L"Boot Services Table address is: %p \n\n", &gBS);	
-			Print(L"EFI_FILE_OPEN Open() function pointer  address is: %p \n\n", &open_func);
-	
-			status = rootvolume->Open(rootvolume, &hostfile, L"\\UEFISelfRep.efi",0x0000000000000001, host_attribs);
-			if (status == EFI_SUCCESS){
-				Print(L"open root volume successful\n\n!");
-				
-				status = gBS->AllocatePool(
-					AllocateAnyPages,
-					newfile_buffersize,
-					(void**)&temp_buf); 
-				
-				if (status==EFI_SUCCESS){
-					Print(L"allocate pool for file read successful!\n\n");
-				}
-				
-				status=hostfile->Read(hostfile, &newfile_buffersize, temp_buf);
-				if (status == EFI_SUCCESS){
-					Print(L"file read with UEFISelfRep.efi successful! \n\n");
-				}
-
-				status  = rootvolume->Open(rootvolume, &targetfile, L"\\4.efi", EFI_FILE_MODE_READ |  EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
-				if (EFI_ERROR(status)){
-					Print(L"error with create file call... \n\n");
-				} else if (status == EFI_SUCCESS){
-					Print(L"yay create file call was successful!!\n\n");
-				}
-				status=targetfile->Write(targetfile, &newfile_buffersize, temp_buf);
-				if (EFI_ERROR(status)){
-					Print(L"error with writing new file... \n\n");
-				} else if (status == EFI_SUCCESS){
-					Print(L"yay write file call was successful!!\n\n");
-				}
-				status=targetfile->Close(targetfile);
-				if (EFI_ERROR(status)){
-					Print(L"error with close file call... \n\n");
-				};
-
-				//Print the first 256 chars from our input file to stdout as a check 				
-				for (UINTN i=0; i < 0x100; i++){
-					Print(L"%c", ((CHAR8 *)temp_buf)[i]);
-				};
-
-				Print(L"Filename current UEFI app executable image: %s\n", ConvertDevicePathToText(devicefilepath ,FALSE,TRUE));
-				Print(L"Device path of current UEFI app executable image: %s\n", ConvertDevicePathToText(devicepath, FALSE,TRUE));
-				Print(L"Image size of current UEFI app executable image: %X\n", img_size);
-
-
-				gBS->FreePool(temp_buf);
-				status=hostfile->Close(hostfile);
-				rootvolume->Close(rootvolume);
-			} else {
-				Print(L" hmm open root volum unsuccessful... something got effed.");
-			}
-		} else {
-			Print(L" hmm something got effed.");
-		}
-		
-	}
-	return status;		
-}*/
