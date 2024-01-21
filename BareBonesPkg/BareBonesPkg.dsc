@@ -31,6 +31,8 @@
 	DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
 	UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
 	UefiDriverEntryPoint|MdePkg/Library/UefiDriverEntryPoint/UefiDriverEntryPoint.inf
+	BmpSupportLib|MdeModulePkg/Library/BaseBmpSupportLib/BaseBmpSupportLib.inf
+	SafeIntLib|MdePkg/Library/BaseSafeIntLib/BaseSafeIntLib.inf
 
 [BuildOptions]
 	GCC:*_*_*_CC_FLAGS   = -O0
