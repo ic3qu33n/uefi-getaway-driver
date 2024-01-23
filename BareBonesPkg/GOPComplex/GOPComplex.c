@@ -14,6 +14,8 @@
 #include <Library/DebugLib.h>
 #include <Library/PrintLib.h>
 #include <Library/UefiDriverEntryPoint.h>
+#include <Library/BmpSupportLib.h>
+#include <IndustryStandard/Bmp.h>
 
 EFI_STATUS
 EFIAPI
@@ -107,6 +109,26 @@ GOPComplexEntryPoint (
 	 IN UINTN                                        Height,
 	 IN UINTN                                        Delta OPTIONAL
 	 );
+
+BMP struct, from: https://github.com/tianocore/edk2/blob/master/MdePkg/Include/IndustryStandard/Bmp.h
+typedef struct {
+  CHAR8     CharB;
+  CHAR8     CharM;
+  UINT32    Size;
+  UINT16    Reserved[2];
+  UINT32    ImageOffset;
+  UINT32    HeaderSize;
+  UINT32    PixelWidth;
+  UINT32    PixelHeight;
+  UINT16    Planes;              ///< Must be 1
+  UINT16    BitPerPixel;         ///< 1, 4, 8, or 24
+  UINT32    CompressionType;
+  UINT32    ImageSize;           ///< Compressed image size in bytes
+  UINT32    XPixelsPerMeter;
+  UINT32    YPixelsPerMeter;
+  UINT32    NumberOfColors;
+  UINT32    ImportantColors;
+} BMP_IMAGE_HEADER;
  ****************************************************************************************
  Relevant struct definitions (and their corresponding URLs) from the UEFI spec are below:
  ****************************************************************************************
@@ -385,6 +407,19 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 	  EFI_PHYSICAL_ADDRESS                      FrameBufferBase;
 	  UINTN                                     FrameBufferSize;
 	} EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE;
+
+	[From "BmpSupportLib.h" - TranslateBmpToGotBlt]
+	RETURN_STATUS
+	EFIAPI
+	TranslateBmpToGopBlt (
+	  IN     VOID                           *BmpImage,
+	  IN     UINTN                          BmpImageSize,
+	  IN OUT EFI_GRAPHICS_OUTPUT_BLT_PIXEL  **GopBlt,
+	  IN OUT UINTN                          *GopBltSize,
+	  OUT    UINTN                          *PixelHeight,
+	  OUT    UINTN                          *PixelWidth
+	  );
+
 	void* gbs_handle_protocol = (gBS->HandleProtocol);
 	Print(L"Boot Services HandleProtocol pointer  address is: %p \n\n", &gbs_handle_protocol);
 */
@@ -416,6 +451,10 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 				Print(L"EFI_GOP Mode %d: \n Vertical Resolution: %d \n Horizontal Resolution: %d \nPixel format: %s \n\n", &horiz_rez, &vert_rez, &pixelformat);
 			}
 	
+			status = gop->SetMode(gop, gop->Mode->Mode);
+			if (status == EFI_SUCCESS) {
+				Print(L"EFI GOP SetMode call successful: %p \n", &(gop->Mode->Mode));
+			}
 			EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *sfsp;
 			EFI_GUID sfsp_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
 			EFI_HANDLE devicehandle = loadedimageprotocol->DeviceHandle;
@@ -510,9 +549,15 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 				//UINTN newfile_buffersize =(UINTN) img_size;
 				UINTN newfile_buffersize;
 				VOID *temp_buf;
+				EFI_GRAPHICS_OUTPUT_BLT_PIXEL *bmp_gop = NULL;
+				UINTN bmp_pixelheight = 0;
+				UINTN bmp_pixelwidth = 0;
+				UINTN gopbltsize = 0;
+				BMP_IMAGE_HEADER* bmp=(BMP_IMAGE_HEADER*)&temp_buf;
 				EFI_FILE_OPEN *open_func=&(rootvolume->Open);
 				Print(L"EFI_FILE_OPEN Open() function pointer  address is: %p \n\n", &open_func);
-				status = rootvolume->Open(rootvolume, &hostfile, L"\\skull2.bmp",0x0000000000000001, host_attribs);
+				//status = rootvolume->Open(rootvolume, &hostfile, L"\\skull2.bmp",0x0000000000000001, host_attribs);
+				status = rootvolume->Open(rootvolume, &hostfile, L"\\Logo.bmp",0x0000000000000001, host_attribs);
 				if (status == EFI_SUCCESS){
 					Print(L"open root volume successful\n\n!");
 					
@@ -530,7 +575,7 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 						UINT64 bmpfilesize = bmp_file_info.FileSize;
 						CHAR16 *bmpfilename = bmp_file_info.FileName;
 						Print(L"Name of BMP file: %s \n Physical size of BMP file: %llu \n", &bmpfilename, &bmpfilesize); 
-					
+						
 						newfile_buffersize=(UINTN) bmpfilesize;
 					
 						status = gBS->AllocatePool(
@@ -541,10 +586,44 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 						if (status==EFI_SUCCESS){
 							Print(L"allocate pool for file read successful!\n\n");
 						}
+						Print(L"BMP file width: %llu \n BMP file height: %llu \n", bmp->PixelWidth, bmp->PixelHeight); 
 						//status=hostfile->GetInfo(hostfile, &file_info_guid, &bmpfileinfo_size, NULL);
 						status=hostfile->Read(hostfile, &newfile_buffersize, temp_buf);
+						UINT32 horiz_rez=gop_info->HorizontalResolution;
+						UINT32 vert_rez=gop_info->VerticalResolution;
 						if (status == EFI_SUCCESS){
 							Print(L"file read with UEFISelfRep.efi successful! \n\n");
+							status = gBS->AllocatePool(
+								AllocateAnyPages,
+								newfile_buffersize,
+								(void**)&bmp_gop); 
+							if (status == EFI_SUCCESS){
+								Print(L"allocate pool for bmp_gop  successful!\n\n");
+								status=TranslateBmpToGopBlt(temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
+								status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, 0, 0, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+							}	
+							//UINTN bmp_height= bmp_pixelheight / vert_rez / 2;
+							//UINTN bmp_width= bmp_pixelwidth / horiz_rez / 2;
+							status=TranslateBmpToGopBlt(temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
+							if (status == EFI_SUCCESS){
+								Print(L"Translate BMP File to GOP blt buffer successful! \n\n");
+								if (bmp_pixelheight > vert_rez){
+									Print(L"BMP image height: %d \n  pixelheight too large for screen resolution! :( \n\n", &bmp_pixelheight);
+								}
+								if (bmp_pixelwidth > horiz_rez){
+									Print(L"BMP image widthi: %d \n pixelwidth too large for screen resolution! :( \n\n", &bmp_pixelwidth);
+								}
+								status = gop->Blt(gop, temp_buf, EfiBltBufferToVideo, 0, 0, 0, 0, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+							} else if (status == EFI_BUFFER_TOO_SMALL){
+								Print(L"Translate BMP File to GOP blt buffer not successful... trying again \n\n");
+								status=TranslateBmpToGopBlt((void**)&temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
+
+							} else if (status == RETURN_INVALID_PARAMETER){
+								Print(L"params are fucked. Everything is horrible.\n");
+							} else if (status == EFI_BUFFER_TOO_SMALL){
+								Print(L"Everything is horrible.\n");
+							}
+;
 						}
 					}
 					/*
