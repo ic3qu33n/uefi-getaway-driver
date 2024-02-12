@@ -15,7 +15,24 @@
 #include <Library/PrintLib.h>
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/BmpSupportLib.h>
+#include <Library/DebugLib.h>
 #include <IndustryStandard/Bmp.h>
+
+
+
+
+EFI_STATUS
+ReadBMPFile (EFI_HANDLE *bmpfile){
+	BMP_IMAGE_HEADER *bmp=(BMP_IMAGE_HEADER*) bmpfile;
+	EFI_STATUS status= EFI_SUCCESS;
+	Print(L"BMP image height: %d \n\n", bmp->PixelHeight);
+	Print(L"BMP image width: %d \n\n", bmp->PixelWidth);
+	Print(L"BMP image size: %d \n\n", bmp->ImageSize);
+	Print(L"BMP image offset: %d \n\n", bmp->ImageOffset);
+	Print(L"BMP size: %d \n\n", bmp->Size);
+	return status;
+}
+
 
 EFI_STATUS
 EFIAPI
@@ -553,11 +570,13 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 				UINTN bmp_pixelheight = 0;
 				UINTN bmp_pixelwidth = 0;
 				UINTN gopbltsize = 0;
-				BMP_IMAGE_HEADER* bmp=(BMP_IMAGE_HEADER*)&temp_buf;
+				BMP_IMAGE_HEADER* bmp=(BMP_IMAGE_HEADER*)temp_buf;
 				EFI_FILE_OPEN *open_func=&(rootvolume->Open);
 				Print(L"EFI_FILE_OPEN Open() function pointer  address is: %p \n\n", &open_func);
 				//status = rootvolume->Open(rootvolume, &hostfile, L"\\skull2.bmp",0x0000000000000001, host_attribs);
-				status = rootvolume->Open(rootvolume, &hostfile, L"\\Logo.bmp",0x0000000000000001, host_attribs);
+				//status = rootvolume->Open(rootvolume, &hostfile, L"\\ophelia0_666.bmp",0x0000000000000001, host_attribs);
+				status = rootvolume->Open(rootvolume, &hostfile, L"\\ophelia0_pixelated_666.bmp",0x0000000000000001, host_attribs);
+				//status = rootvolume->Open(rootvolume, &hostfile, L"\\Logo.bmp",0x0000000000000001, host_attribs);
 				if (status == EFI_SUCCESS){
 					Print(L"open root volume successful\n\n!");
 					
@@ -593,27 +612,42 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 						UINT32 vert_rez=gop_info->VerticalResolution;
 						if (status == EFI_SUCCESS){
 							Print(L"file read with UEFISelfRep.efi successful! \n\n");
+						//	status = gBS->AllocatePool(
+						//		AllocateAnyPages,
+						//		newfile_buffersize,
+						//		(void**)&bmp_gop); 
 							status = gBS->AllocatePool(
-								AllocateAnyPages,
-								newfile_buffersize,
+								EfiBootServicesData,
+								newfile_buffersize * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL),
 								(void**)&bmp_gop); 
 							if (status == EFI_SUCCESS){
 								Print(L"allocate pool for bmp_gop  successful!\n\n");
+								status=ReadBMPFile((void**)&temp_buf);
+								status=ReadBMPFile((void**)&bmp_gop);
 								status=TranslateBmpToGopBlt(temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
-								status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, 0, 0, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+								UINTN coordinatey=  (vert_rez / 2) - (bmp_pixelheight / 2);
+								UINTN coordinatex= (horiz_rez / 2) - (bmp_pixelwidth / 2);
+								//Print(L"BMP image height: %llu \n\n", &bmp_pixelheight);
+								Print(L"BMP image height: %d \n\n", bmp->PixelHeight);
+								Print(L"BMP image width: %d \n\n", bmp->PixelWidth);
+								Print(L"BMP image coordinate x: %d \n\n", &coordinatex);
+								Print(L"BMP image coordinate y: %d \n\n", &coordinatey);
+								status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, 200, 200, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));	
+								
 							}	
-							//UINTN bmp_height= bmp_pixelheight / vert_rez / 2;
-							//UINTN bmp_width= bmp_pixelwidth / horiz_rez / 2;
 							status=TranslateBmpToGopBlt(temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
 							if (status == EFI_SUCCESS){
 								Print(L"Translate BMP File to GOP blt buffer successful! \n\n");
+								Print(L"BMP image height: %d \n\n", bmp_pixelheight);
+								Print(L"BMP image width: %d \n\n", bmp_pixelwidth);
 								if (bmp_pixelheight > vert_rez){
 									Print(L"BMP image height: %d \n  pixelheight too large for screen resolution! :( \n\n", &bmp_pixelheight);
 								}
 								if (bmp_pixelwidth > horiz_rez){
-									Print(L"BMP image widthi: %d \n pixelwidth too large for screen resolution! :( \n\n", &bmp_pixelwidth);
+									Print(L"BMP image width: %d \n pixelwidth too large for screen resolution! :( \n\n", &bmp_pixelwidth);
 								}
-								status = gop->Blt(gop, temp_buf, EfiBltBufferToVideo, 0, 0, 0, 0, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+								status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, 200, 200, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+								status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, 600, 600, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
 							} else if (status == EFI_BUFFER_TOO_SMALL){
 								Print(L"Translate BMP File to GOP blt buffer not successful... trying again \n\n");
 								status=TranslateBmpToGopBlt((void**)&temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
@@ -649,6 +683,7 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 					};
 					//Print(L"Filename current UEFI app executable image: %s\n", ConvertDevicePathToText(devicefilepath ,FALSE,TRUE));
 					gBS->FreePool(temp_buf);
+					gBS->FreePool(bmp_gop);
 					status=hostfile->Close(hostfile);
 					rootvolume->Close(rootvolume);
 				} else {
