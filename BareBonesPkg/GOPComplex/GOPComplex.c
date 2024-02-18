@@ -570,12 +570,14 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 				UINTN bmp_pixelheight = 0;
 				UINTN bmp_pixelwidth = 0;
 				UINTN gopbltsize = 0;
-				BMP_IMAGE_HEADER* bmp=(BMP_IMAGE_HEADER*)temp_buf;
+				//BMP_IMAGE_HEADER* bmp=(BMP_IMAGE_HEADER*)temp_buf;
 				EFI_FILE_OPEN *open_func=&(rootvolume->Open);
 				Print(L"EFI_FILE_OPEN Open() function pointer  address is: %p \n\n", &open_func);
 				//status = rootvolume->Open(rootvolume, &hostfile, L"\\skull2.bmp",0x0000000000000001, host_attribs);
 				//status = rootvolume->Open(rootvolume, &hostfile, L"\\ophelia0_666.bmp",0x0000000000000001, host_attribs);
-				status = rootvolume->Open(rootvolume, &hostfile, L"\\ophelia0_pixelated_666.bmp",0x0000000000000001, host_attribs);
+				//status = rootvolume->Open(rootvolume, &hostfile, L"\\ophelia0_pixelated_666.bmp",0x0000000000000001, host_attribs);
+				//status = rootvolume->Open(rootvolume, &hostfile, L"\\michelangelo-reanimator-0_pixelated.bmp",0x0000000000000001, host_attribs);
+				status = rootvolume->Open(rootvolume, &hostfile, L"\\michelangelo-reanimator-1_pixelated.bmp",0x0000000000000001, host_attribs);
 				//status = rootvolume->Open(rootvolume, &hostfile, L"\\Logo.bmp",0x0000000000000001, host_attribs);
 				if (status == EFI_SUCCESS){
 					Print(L"open root volume successful\n\n!");
@@ -605,13 +607,13 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 						if (status==EFI_SUCCESS){
 							Print(L"allocate pool for file read successful!\n\n");
 						}
-						Print(L"BMP file width: %llu \n BMP file height: %llu \n", bmp->PixelWidth, bmp->PixelHeight); 
+						//Print(L"BMP file width: %llu \n BMP file height: %llu \n", bmp->PixelWidth, bmp->PixelHeight); 
 						//status=hostfile->GetInfo(hostfile, &file_info_guid, &bmpfileinfo_size, NULL);
 						status=hostfile->Read(hostfile, &newfile_buffersize, temp_buf);
 						UINT32 horiz_rez=gop_info->HorizontalResolution;
 						UINT32 vert_rez=gop_info->VerticalResolution;
 						if (status == EFI_SUCCESS){
-							Print(L"file read with UEFISelfRep.efi successful! \n\n");
+							//Print(L"file read with UEFISelfRep.efi successful! \n\n");
 						//	status = gBS->AllocatePool(
 						//		AllocateAnyPages,
 						//		newfile_buffersize,
@@ -621,25 +623,25 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 								newfile_buffersize * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL),
 								(void**)&bmp_gop); 
 							if (status == EFI_SUCCESS){
-								Print(L"allocate pool for bmp_gop  successful!\n\n");
+								//Print(L"allocate pool for bmp_gop  successful!\n\n");
 								status=ReadBMPFile((void**)&temp_buf);
 								status=ReadBMPFile((void**)&bmp_gop);
 								status=TranslateBmpToGopBlt(temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
-								UINTN coordinatey=  (vert_rez / 2) - (bmp_pixelheight / 2);
-								UINTN coordinatex= (horiz_rez / 2) - (bmp_pixelwidth / 2);
+								//UINTN coordinatey=  (vert_rez / 2) - (bmp_pixelheight / 2);
+								//UINTN coordinatex= (horiz_rez / 2) - (bmp_pixelwidth / 2);
 								//Print(L"BMP image height: %llu \n\n", &bmp_pixelheight);
-								Print(L"BMP image height: %d \n\n", bmp->PixelHeight);
+								/*Print(L"BMP image height: %d \n\n", bmp->PixelHeight);
 								Print(L"BMP image width: %d \n\n", bmp->PixelWidth);
 								Print(L"BMP image coordinate x: %d \n\n", &coordinatex);
-								Print(L"BMP image coordinate y: %d \n\n", &coordinatey);
+								Print(L"BMP image coordinate y: %d \n\n", &coordinatey);*/
 								status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, 200, 200, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));	
 								
 							}	
 							status=TranslateBmpToGopBlt(temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
 							if (status == EFI_SUCCESS){
-								Print(L"Translate BMP File to GOP blt buffer successful! \n\n");
+								/*Print(L"Translate BMP File to GOP blt buffer successful! \n\n");
 								Print(L"BMP image height: %d \n\n", bmp_pixelheight);
-								Print(L"BMP image width: %d \n\n", bmp_pixelwidth);
+								Print(L"BMP image width: %d \n\n", bmp_pixelwidth);*/
 								if (bmp_pixelheight > vert_rez){
 									Print(L"BMP image height: %d \n  pixelheight too large for screen resolution! :( \n\n", &bmp_pixelheight);
 								}

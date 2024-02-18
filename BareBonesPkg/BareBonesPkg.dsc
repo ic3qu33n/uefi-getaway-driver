@@ -14,6 +14,7 @@
 	BareBonesPkg/UEFISelfRep/UEFISelfRep.inf
 	BareBonesPkg/SelfRep4/SelfRep4.inf
 	BareBonesPkg/GOPComplex/GOPComplex.inf
+	BareBonesPkg/SmmCalloutDriver/SmmCalloutDriver.inf
 
 
 [LibraryClasses]

@@ -1,0 +1,26 @@
+[Defines]
+	INF_VERSION						= 1.25
+	BASE_NAME						= SmmCalloutDriver
+	FILE_GUID						= 3A74B539-BA97-4C83-92F6-6A76FF6C2341
+	MODULE_TYPE						= UEFI_DRIVER
+	VERSION_STRING					= 1.0
+	ENTRY_POINT						= SmmCalloutDriverEntryPoint
+	UNLOAD_IMAGE					= SmmCalloutDriverUnload
+
+[Sources]
+	SmmCalloutDriver.c
+
+[Packages]
+	MdePkg/MdePkg.dec
+	MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+	UefiLib
+	UefiDriverEntryPoint
+    UefiBootServicesTableLib
+    UefiRuntimeServicesTableLib
+    BaseMemoryLib
+    DebugLib
+    PrintLib
+	BmpSupportLib
+
