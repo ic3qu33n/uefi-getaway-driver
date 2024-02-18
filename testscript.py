@@ -24,7 +24,8 @@ uefi_app_build_cmd= ["build",  "--platform=BareBonesPkg/BareBonesPkg.dsc",  "--a
 target_pkg="Build/BareBonesPkg/DEBUG_GCC/X64/"
 #uefi_app_name="ImageOffTheHandle.efi"
 #uefi_app_name="UEFISelfRep.efi"
-uefi_driver_name="GOPComplex.efi"
+#uefi_driver_name="GOPComplex.efi"
+uefi_driver_name="SmmCalloutDriver.efi"
 #uefi_app_name="self-rep-golf.efi"
 target_uefi_driver= edk2_dir + target_pkg + uefi_driver_name
 target_disk="/Users/nika/uefi_testing/UEFI_bb_disk"

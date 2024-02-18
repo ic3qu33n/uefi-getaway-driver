@@ -268,17 +268,30 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 	if (EFI_ERROR(status)){
 		return status;
 	}
-	status=efi_acpi_sdt_protocol->GetAcpiTable(index, &efi_acpi_table, &version, &tablekey); 
-	if (EFI_ERROR(status)){
-		return status;
+	while(TRUE){
+	
+		status=efi_acpi_sdt_protocol->GetAcpiTable(index, &efi_acpi_table, &version, &tablekey); 
+		if (EFI_ERROR(status)){
+			return status;
+		}
+		if (((CHAR8)((efi_acpi_table->Signature >> 0)&0xFF) == 'U') &&
+			((CHAR8)((efi_acpi_table->Signature >> 8)&0xFF) == 'E') &&
+			((CHAR8)((efi_acpi_table->Signature >> 16)&0xFF) == 'F') &&
+			((CHAR8)((efi_acpi_table->Signature >> 24)&0xFF) == 'I')){
+				Print(L"UEFI table found at %p with length 0x%x \n", efi_acpi_table, efi_acpi_table->Length);
+				break;
+		}
+		else {
+			Print(L"Found ACPI Table: %c %c %c %c at %p with length: 0x%x \n", 
+					(CHAR8)((efi_acpi_table->Signature >> 0)&0xFF),
+					(CHAR8)((efi_acpi_table->Signature >> 8)&0xFF),
+					(CHAR8)((efi_acpi_table->Signature >> 16)&0xFF),
+					(CHAR8)((efi_acpi_table->Signature >> 24)&0xFF),
+					efi_acpi_table,
+					efi_acpi_table->Length);
+		}
+		index++;
 	}
-	Print(L"Found ACPI Table: %c %c %c %c at %p with length: 0x%x \n", 
-			(CHAR8)((efi_acpi_table->Signature >> 0)&0xFF),
-			(CHAR8)((efi_acpi_table->Signature >> 8)&0xFF),
-			(CHAR8)((efi_acpi_table->Signature >> 16)&0xFF),
-			(CHAR8)((efi_acpi_table->Signature >> 24)&0xFF),
-			efi_acpi_table,
-			efi_acpi_table->Length);
 	return status;		
 }
 
