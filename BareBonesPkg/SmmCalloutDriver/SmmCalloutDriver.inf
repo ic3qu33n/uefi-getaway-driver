@@ -24,3 +24,5 @@
     PrintLib
 	BmpSupportLib
 
+[Protocols]
+	gEfiSmmCommunicationProtocolGuid

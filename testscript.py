@@ -38,7 +38,9 @@ uefi_copy_app_cmd=["cp", target_uefi_driver, target_disk]
 ##qemu UEFI run command with graphics output
 #uefi_app_run_cmd=["/opt/homebrew/bin/qemu-system-x86_64", "-drive", "if=pflash,format=raw,file=edk2/Build/OvmfX64/RELEASE_GCC/FV/OVMF.fd", "-drive", "format=raw,file=fat:rw:UEFI_bb_disk","-net","none","-device","virtio-rng-pci", "-machine","q35", "-smp","4", "-m","256M","-vga","std"]
 
-uefi_app_run_debug_cmd=["/opt/homebrew/bin/qemu-system-x86_64", "-drive", "if=pflash,format=raw,file=/Users/nika/uefi_testing/edk2/Build/OvmfX64/DEBUG_GCC/FV/OVMF.fd", "-drive", "format=raw,file=fat:rw:UEFI_bb_disk", "-device", "virtio-rng-pci", "-machine","q35", "-smp","4", "-m","256M","-vga","std","-net","none","-global","isa-debugcon.iobase=0x402","-debugcon","file:debug.log", "-s"]
+##uefi_app_run_debug_cmd=["/opt/homebrew/bin/qemu-system-x86_64", "-drive", "if=pflash,format=raw,file=/Users/nika/uefi_testing/edk2/Build/OvmfX64/DEBUG_GCC/FV/OVMF.fd", "-drive", "format=raw,file=fat:rw:UEFI_bb_disk", "-device", "virtio-rng-pci", "-machine","q35,smm=on", "-smp","4", "-m","256M","-vga","std","-net","none","-global","isa-debugcon.iobase=0x402","-debugcon","file:debug.log", "-s"]
+
+uefi_app_run_debug_cmd=["/opt/homebrew/bin/qemu-system-x86_64", "-drive", "if=pflash,format=raw,file=/Users/nika/uefi_testing/edk2/Build/OvmfX64/DEBUG_GCC/FV/OVMF.fd", "-drive", "format=raw,file=fat:rw:UEFI_bb_disk", "-machine","q35", "-smp","4", "-m","256M","-vga","none", "-nographic","-net","none", "-global","isa-debugcon.iobase=0x402","-debugcon","file:debug.log", "-s"]
 
 
 if __name__ == '__main__':
@@ -53,3 +55,4 @@ if __name__ == '__main__':
 	except (RuntimeError, TypeError) as e:
 		print("oh no. error error: {0}".format(e))
 	
+#,smm=on", 

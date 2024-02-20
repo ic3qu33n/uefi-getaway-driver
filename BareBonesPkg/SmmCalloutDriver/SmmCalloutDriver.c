@@ -13,7 +13,15 @@
 #include <Library/DebugLib.h>
 #include <Library/PrintLib.h>
 #include <Library/UefiDriverEntryPoint.h>
+
 #include <Protocol/AcpiSystemDescriptionTable.h>
+#include <Protocol/SmmBase2.h>
+#include <Protocol/SmmAccess2.h>
+#include <Protocol/SmmCommunication.h>
+#include <Guid/PiSmmCommunicationRegionTable.h>
+
+#include <Guid/SmiHandlerProfile.h>
+
 
 EFI_STATUS
 EFIAPI
@@ -268,7 +276,7 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 	if (EFI_ERROR(status)){
 		return status;
 	}
-	while(TRUE){
+	while(index < efi_acpi_table->Length){
 	
 		status=efi_acpi_sdt_protocol->GetAcpiTable(index, &efi_acpi_table, &version, &tablekey); 
 		if (EFI_ERROR(status)){
@@ -291,6 +299,11 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 					efi_acpi_table->Length);
 		}
 		index++;
+	}
+	EFI_SMM_COMMUNICATION_PROTOCOL *smmCommProtocol = NULL;	
+	//EFI_SMM_BASE_PROTOCOL *smmBaseProtocol = NULL;	
+	if ((status = gBS->LocateProtocol(&gEfiSmmCommunicationProtocolGuid, NULL, (VOID **)&smmCommProtocol)) == EFI_SUCCESS){
+		Print(L"Smm Communication Protocol located at: %p \n", smmCommProtocol);
 	}
 	return status;		
 }
