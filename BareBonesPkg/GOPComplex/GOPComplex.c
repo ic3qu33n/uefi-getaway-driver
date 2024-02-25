@@ -33,6 +33,16 @@ ReadBMPFile (EFI_HANDLE *bmpfile){
 	return status;
 }
 
+EFI_STATUS
+gop_alter(EFI_GRAPHICS_OUTPUT_BLT_PIXEL *bmp_gop, UINTN vid_idx){
+	EFI_STATUS status= EFI_SUCCESS;
+	//EFI_GRAPHICS_OUTPUT_BLT_PIXEL curr_pixel = *bmp_gop; 
+	UINT8 i = (UINT8)vid_idx;
+	bmp_gop->Red &= i;
+	bmp_gop->Green >>= 2 ;
+	bmp_gop->Blue += i*2;
+	return status;
+}
 
 EFI_STATUS
 EFIAPI
@@ -612,6 +622,7 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 						status=hostfile->Read(hostfile, &newfile_buffersize, temp_buf);
 						UINT32 horiz_rez=gop_info->HorizontalResolution;
 						UINT32 vert_rez=gop_info->VerticalResolution;
+						//UINTN max_screen_size=vert_rez*horiz_rez;
 						if (status == EFI_SUCCESS){
 							//Print(L"file read with UEFISelfRep.efi successful! \n\n");
 						//	status = gBS->AllocatePool(
@@ -624,9 +635,9 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 								(void**)&bmp_gop); 
 							if (status == EFI_SUCCESS){
 								//Print(L"allocate pool for bmp_gop  successful!\n\n");
-								status=ReadBMPFile((void**)&temp_buf);
-								status=ReadBMPFile((void**)&bmp_gop);
-								status=TranslateBmpToGopBlt(temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
+								//status=ReadBMPFile((void**)&temp_buf);
+								//status=ReadBMPFile((void**)&bmp_gop);
+								//status=TranslateBmpToGopBlt(temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
 								//UINTN coordinatey=  (vert_rez / 2) - (bmp_pixelheight / 2);
 								//UINTN coordinatex= (horiz_rez / 2) - (bmp_pixelwidth / 2);
 								//Print(L"BMP image height: %llu \n\n", &bmp_pixelheight);
@@ -634,32 +645,40 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 								Print(L"BMP image width: %d \n\n", bmp->PixelWidth);
 								Print(L"BMP image coordinate x: %d \n\n", &coordinatex);
 								Print(L"BMP image coordinate y: %d \n\n", &coordinatey);*/
-								status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, 200, 200, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));	
+								////status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, 200, 200, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));	
 								
-							}	
-							status=TranslateBmpToGopBlt(temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
-							if (status == EFI_SUCCESS){
-								/*Print(L"Translate BMP File to GOP blt buffer successful! \n\n");
-								Print(L"BMP image height: %d \n\n", bmp_pixelheight);
-								Print(L"BMP image width: %d \n\n", bmp_pixelwidth);*/
-								if (bmp_pixelheight > vert_rez){
-									Print(L"BMP image height: %d \n  pixelheight too large for screen resolution! :( \n\n", &bmp_pixelheight);
-								}
-								if (bmp_pixelwidth > horiz_rez){
-									Print(L"BMP image width: %d \n pixelwidth too large for screen resolution! :( \n\n", &bmp_pixelwidth);
-								}
-								status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, 200, 200, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-								status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, 600, 600, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-							} else if (status == EFI_BUFFER_TOO_SMALL){
-								Print(L"Translate BMP File to GOP blt buffer not successful... trying again \n\n");
-								status=TranslateBmpToGopBlt((void**)&temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
+							//}	
+								status=TranslateBmpToGopBlt(temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
+								if (status == EFI_SUCCESS){
+									/*Print(L"Translate BMP File to GOP blt buffer successful! \n\n");
+									Print(L"BMP image height: %d \n\n", bmp_pixelheight);
+									Print(L"BMP image width: %d \n\n", bmp_pixelwidth);*/
+									if (bmp_pixelheight > vert_rez){
+										Print(L"BMP image height: %d \n  pixelheight too large for screen resolution! :( \n\n", &bmp_pixelheight);
+									}
+									if (bmp_pixelwidth > horiz_rez){
+										Print(L"BMP image width: %d \n pixelwidth too large for screen resolution! :( \n\n", &bmp_pixelwidth);
+									}
+									//UINTN videox = 0;
+									//UINTN videoy = 0;
+									UINTN vid_idx = 0;
+									//while (vid_idx < max_screen_size){  
+									while (vid_idx < 256){
+										status=gop_alter(bmp_gop, vid_idx);  
+										status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, vid_idx, vid_idx, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+										status = gop->Blt(gop, bmp_gop, EfiBltBufferToVideo, 0, 0, 10*vid_idx, 10*vid_idx, bmp_pixelwidth, bmp_pixelheight, bmp_pixelwidth*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+										vid_idx++;
+									}
+								} else if (status == EFI_BUFFER_TOO_SMALL){
+									Print(L"Translate BMP File to GOP blt buffer not successful... trying again \n\n");
+									status=TranslateBmpToGopBlt((void**)&temp_buf, newfile_buffersize, &bmp_gop, &gopbltsize, &bmp_pixelheight, &bmp_pixelwidth);
 
-							} else if (status == RETURN_INVALID_PARAMETER){
-								Print(L"params are fucked. Everything is horrible.\n");
-							} else if (status == EFI_BUFFER_TOO_SMALL){
-								Print(L"Everything is horrible.\n");
+								} else if (status == RETURN_INVALID_PARAMETER){
+									Print(L"params are fucked. Everything is horrible.\n");
+								} else if (status == EFI_BUFFER_TOO_SMALL){
+									Print(L"Everything is horrible.\n");
+								}
 							}
-;
 						}
 					}
 					/*
@@ -680,10 +699,11 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 						Print(L"error with close file call... \n\n");
 					};
 					//Print the first 256 chars from our input file to stdout as a check 				
-					for (UINTN i=0; i < 0x100; i++){
+					/*for (UINTN i=0; i < 0x100; i++){
 						Print(L"%c", ((CHAR8 *)temp_buf)[i]);
-					};
+					};*/
 					//Print(L"Filename current UEFI app executable image: %s\n", ConvertDevicePathToText(devicefilepath ,FALSE,TRUE));
+					//gBS->FreePool(bmp_file_info);
 					gBS->FreePool(temp_buf);
 					gBS->FreePool(bmp_gop);
 					status=hostfile->Close(hostfile);
