@@ -28,6 +28,7 @@ import subprocess
 LOGFILE="debug.log"
 TARGET_FILE="SmmCalloutDriver.efi"
 TARGET="UEFI_bb_disk/"+TARGET_FILE
+SYMBOL_FILE="/Users/nika/uefi_testing/edk2/Build/BareBonesPkg/DEBUG_GCC/X64/SmmCalloutDriver.debug"
 UEFI_DEBUG_PATTERN= r"Loading driver at (0x[0-9A-Fa-f]{8,}) EntryPoint=(0x[0-9A-Fa-f]{8,}) (\w+).efi"
 
 def calculate_target_addresses(base_addr, text_section_offset, data_offset):
@@ -77,3 +78,5 @@ if __name__ == "__main__":
 	print(f"Identified .text section address offset of target file is: {text_offset} \n")
 	print(f"Identified .data section address offset of target file is: {data_offset} \n")
 	(text_addr, data_addr) = calculate_target_addresses(target_base_addr, text_offset, data_offset)
+	print(f"add-symbol-file {SYMBOL_FILE} {text_addr} -s .data {data_addr} \n")
+
