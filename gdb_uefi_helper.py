@@ -6,10 +6,39 @@ import re
 #import gdb 
 import subprocess
 
+#########################################################################
+#
+#	Script for automating the process of loading a UEFI app/driver
+# 	into GDB for debugging
+#	This script does the following:
+#	- finds the base address, as well as the
+# 	.text section and .data section offsets for a target UEFI app/driver
+#	- 
+#
+#	This script is based on these two other scripts:
+# 	"uefi-gdb" by artem-nefedov:
+#	https://github.com/artem-nefedov/uefi-gdb/
+#	and
+# 	"run-gdb" by Kostr:
+#	https://github.com/Kostr/UEFI-Lessons/blob/master/scripts/run_gdb.sh
+#
+#########################################################################
+
+
 LOGFILE="debug.log"
 TARGET_FILE="SmmCalloutDriver.efi"
 TARGET="UEFI_bb_disk/"+TARGET_FILE
 UEFI_DEBUG_PATTERN= r"Loading driver at (0x[0-9A-Fa-f]{8,}) EntryPoint=(0x[0-9A-Fa-f]{8,}) (\w+).efi"
+
+def calculate_target_addresses(base_addr, text_section_offset, data_offset):
+	target_base = int(base_addr, 16)
+	target_text_offset = int(text_offset, 16)
+	target_text_addr = hex(target_base + target_text_offset)
+	print(f"Final address of .text section in target UEFI app/driver is: {target_text_addr} \n")
+	target_data_offset = int(data_offset, 16)
+	target_data_addr = hex(target_base + target_data_offset)
+	print(f"Final address of .data section in target UEFI app/driver is: {target_data_addr}\n")
+	return (target_text_addr, target_data_addr)
 
 def find_addresses(target_file: str):
 	find_text_args=["objdump", TARGET, "-h"]
@@ -43,7 +72,8 @@ def find_drivers(target_file: str, log_file: str):
 
 if __name__ == "__main__":
 	target_base_addr=find_drivers(TARGET_FILE, LOGFILE)
-	(text_addr, data_addr) = find_addresses(TARGET_FILE)
+	(text_offset, data_offset) = find_addresses(TARGET_FILE)
 	print(f"Target driver base address is {target_base_addr} \n")
-	print(f"Identified .text section address offset of target file is: {text_addr} \n")
-	print(f"Identified .data section address offset of target file is: {data_addr} \n")
+	print(f"Identified .text section address offset of target file is: {text_offset} \n")
+	print(f"Identified .data section address offset of target file is: {data_offset} \n")
+	(text_addr, data_addr) = calculate_target_addresses(target_base_addr, text_offset, data_offset)
